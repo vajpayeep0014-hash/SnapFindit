@@ -1,18 +1,4 @@
-blinker @ file:///C:/miniconda3/conda-bld/blinker_1764332307774/work
-click @ file:///C:/miniconda3/conda-bld/click_1764332357576/work
-colorama @ file:///C:/Users/dev-admin/buildout/croot/colorama_1759952627215/work
-Flask @ file:///C:/Users/dev-admin/buildout/croot/flask_1759970065939/work
+Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
-Flask-WTF==1.2.2
-greenlet==3.3.2
-gunicorn==25.1.0
-itsdangerous @ file:///C:/Users/dev-admin/buildout/croot/itsdangerous_1759965296215/work
-Jinja2 @ file:///C:/Users/dev-admin/buildout/croot/jinja2_1761938590194/work
-MarkupSafe @ file:///C:/Users/dev-admin/buildout/croot/markupsafe_1759955189290/work
-packaging @ file:///C:/miniconda3/conda-bld/packaging_1761049098810/work
-setuptools==80.10.2
-SQLAlchemy==2.0.46
-typing_extensions==4.15.0
-Werkzeug @ file:///C:/Users/dev-admin/buildout/croot/werkzeug_1759968538419/work
-wheel==0.46.3
-WTForms==3.2.1
+gunicorn==21.2.0
+blinker==1.7.0
