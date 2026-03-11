@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snap-Find</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Georgia, serif;
+            background: #f5f5f0;
+            color: #222;
+            min-height: 100vh;
+        }
+
+        /* Nav */
+        nav {
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav .brand { font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; }
+        nav button {
+            background: #222;
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        nav button:hover { background: #444; }
+
+        /* Flash messages */
+        .flash { padding: 10px 24px; font-size: 0.9rem; }
+        .flash.success { background: #d4edda; color: #155724; border-bottom: 1px solid #c3e6cb; }
+        .flash.danger  { background: #f8d7da; color: #721c24; border-bottom: 1px solid #f5c6cb; }
+
+        /* Hero */
+        header {
+            text-align: center;
+            padding: 48px 24px 32px;
+        }
+        header h1 { font-size: 2.2rem; margin-bottom: 8px; }
+        header p  { color: #666; font-size: 1rem; }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .stats strong { font-size: 1.4rem; display: block; color: #222; }
+
+        /* Search & Filter */
+        .tools {
+            max-width: 720px;
+            margin: 0 auto 28px;
+            padding: 0 24px;
+        }
+        .tools input[type="text"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-size: 1rem;
+            font-family: Georgia, serif;
+            margin-bottom: 10px;
+        }
+        .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filters button {
+            padding: 6px 14px;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: Georgia, serif;
+        }
+        .filters button.active { background: #222; color: #fff; border-color: #222; }
+
+        /* Grid */
+        .grid {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px 48px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        /* Card */
+        .card {
+            background: #fff;
+            border: 1px solid #ddd;
+        }
+        .card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+            border-bottom: 1px solid #ddd;
+        }
+        .card-body { padding: 14px; }
+        .card-body .tag {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .card-body h3 { font-size: 1rem; margin-bottom: 4px; }
+        .card-body .loc { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
+        .card-body button {
+            width: 100%;
+            padding: 8px;
+            background: #222;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-family: Georgia, serif;
+            font-size: 0.9rem;
+        }
+        .card-body button:hover { background: #444; }
+
+        /* Empty state */
+        .empty {
+            text-align: center;
+            padding: 60px 24px;
+            color: #888;
+            grid-column: 1 / -1;
+        }
+        .empty h3 { margin-bottom: 6px; font-size: 1.1rem; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff;
+            border: 1px solid #ddd;
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 16px;
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .modal-head h2 { font-size: 1.1rem; }
+        .modal-head button {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #555;
+            line-height: 1;
+        }
+        .modal-body { padding: 20px; }
+
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: #555; }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            font-family: Georgia, serif;
+            font-size: 0.95rem;
+            background: #fafafa;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #222;
+            background: #fff;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* File upload */
+        .file-label {
+            display: block;
+            border: 1px dashed #bbb;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            color: #888;
+            font-size: 0.9rem;
+            background: #fafafa;
+        }
+        .file-label:hover { border-color: #888; color: #555; }
+        #photoInput { display: none; }
+        #imagePreview { width: 100%; margin-top: 8px; display: none; border: 1px solid #ddd; }
+
+        .secret-box {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            padding: 12px 14px;
+            font-size: 0.9rem;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+
+        .modal-foot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 20px;
+            border-top: 1px solid #ddd;
+        }
+        .btn { padding: 9px 20px; border: none; cursor: pointer; font-family: Georgia, serif; font-size: 0.9rem; }
+        .btn-primary { background: #222; color: #fff; }
+        .btn-primary:hover { background: #444; }
+        .btn-ghost { background: #fff; border: 1px solid #ccc; color: #555; }
+        .btn-ghost:hover { background: #f0f0f0; }
+
+        .alert { padding: 10px 14px; margin-bottom: 14px; font-size: 0.9rem; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-danger  { background: #f8d7da; color: #721c24; }
+
+        #genericFields, #electronicsFields { display: none; }
+        #genericFields.show, #electronicsFields.show { display: block; }
+
+        .info-note { font-size: 0.78rem; color: #888; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav>
+        <div class="brand">Lost &amp; Found</div>
+        <button onclick="openModal('uploadModal')">+ Report Item</button>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Hero -->
+    <header>
+        <h1>Campus Lost &amp; Found</h1>
+        <p>Helping reunite lost belongings with their owners.</p>
+        <div class="stats">
+            <div><strong id="activeCount">—</strong> Active Items</div>
+            <div><strong id="claimedCount">—</strong> Returned</div>
+        </div>
+    </header>
+
+    <!-- Search & Filter -->
+    <div class="tools">
+        <input type="text" id="liveSearch" placeholder="Search by name or location…" autocomplete="off">
+        <div class="filters">
+            <button class="active" data-filter="all">All</button>
+            <button data-filter="Electronics">Electronics</button>
+            <button data-filter="Generic">Other</button>
+        </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid" id="itemsGrid">
+        {% for item in items %}
+        <div class="card item-entry" data-category="{{ item.category }}" data-name="{{ item.name | lower }}" data-location="{{ item.location | lower }}">
+            <img src="{{ url_for('static', filename='uploads/' + item.image_file) }}" alt="{{ item.name }}" loading="lazy">
+            <div class="card-body">
+                <div class="tag">{{ item.category }}</div>
+                <h3>{{ item.name }}</h3>
+                <div class="loc">📍 {{ item.location }}</div>
+                <button onclick="openModal('verifyModal{{ item.id }}')">Claim Item</button>
+            </div>
+        </div>
+
+        <!-- Claim Modal -->
+        <div class="modal-overlay" id="verifyModal{{ item.id }}">
+            <div class="modal">
+                <div class="modal-head">
+                    <h2>Claim: {{ item.name }}</h2>
+                    <button onclick="closeModal('verifyModal{{ item.id }}')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="result-{{ item.id }}" class="alert" style="display:none;"></div>
+                    <form onsubmit="handleVerify(event, {{ item.id }})">
+                        {% if item.category == 'Generic' %}
+                        <div class="form-group">
+                            <label>Question from finder:</label>
+                            <div class="secret-box">"{{ item.secret_question }}"</div>
+                            <input type="text" name="answer" placeholder="Your answer" required>
+                        </div>
+                        {% else %}
+                        <div class="form-group">
+                            <label>Enter the device Serial Number or IMEI:</label>
+                            <input type="text" name="answer" placeholder="e.g. C02X1234ABCD" required>
+                        </div>
+                        {% endif %}
+                        <div class="modal-foot" style="padding: 0; border: none; margin-top: 12px;">
+                            <button type="button" class="btn btn-ghost" onclick="closeModal('verifyModal{{ item.id }}')">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Verify</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not items %}
+        <div class="empty">
+            <h3>No active items</h3>
+            <p>Everything is exactly where it should be.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="noResults" class="empty" style="display:none; max-width:960px; margin:0 auto; padding: 60px 24px;">
+        <h3>No results found</h3>
+        <p>Try different search terms or filters.</p>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>Report a Found Item</h2>
+                <button onclick="closeModal('uploadModal')">×</button>
+            </div>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Item Name</label>
+                            <input type="text" name="name" placeholder="e.g. AirPods" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Found Location</label>
+                            <input type="text" name="location" placeholder="e.g. Cafe 2F" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Photo</label>
+                        <label class="file-label" for="photoInput">Click to upload a photo</label>
+                        <input type="file" name="photo" id="photoInput" accept="image/*" onchange="previewImage(this)">
+                        <img id="imagePreview" alt="Preview">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Your Contact</label>
+                        <input type="text" name="contact" placeholder="Email or phone number" required>
+                        <div class="info-note">Only shared with the owner after they pass verification.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select name="category" id="categorySelect" onchange="toggleFields()">
+                            <option value="Generic">Standard Item (Q&amp;A)</option>
+                            <option value="Electronics">Electronics (Serial Number)</option>
+                        </select>
+                    </div>
+
+                    <div id="genericFields" class="show">
+                        <div class="form-group">
+                            <label>Secret Question</label>
+                            <input type="text" name="secret_question" placeholder="e.g. What's on the lock screen?">
+                        </div>
+                        <div class="form-group">
+                            <label>Expected Answer</label>
+                            <input type="text" name="secret_answer" placeholder="e.g. A cat">
+                        </div>
+                    </div>
+
+                    <div id="electronicsFields">
+                        <div class="form-group">
+                            <label>Device Serial Number / IMEI</label>
+                            <input type="text" name="serial_number" placeholder="e.g. C02X1234ABCD">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('uploadModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Stats
+        fetch('/api/stats').then(r => r.json()).then(d => {
+            document.getElementById('activeCount').textContent = d.active;
+            document.getElementById('claimedCount').textContent = d.claimed;
+        });
+
+        // Modal
+        function openModal(id)  { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        document.querySelectorAll('.modal-overlay').forEach(el => {
+            el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+        });
+
+        // Image preview
+        function previewImage(input) {
+            const img = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                img.src = URL.createObjectURL(input.files[0]);
+                img.style.display = 'block';
+            }
+        }
+
+        // Toggle fields
+        function toggleFields() {
+            const val = document.getElementById('categorySelect').value;
+            document.getElementById('genericFields').className = val === 'Generic' ? 'show' : '';
+            document.getElementById('electronicsFields').className = val === 'Electronics' ? 'show' : '';
+        }
+
+        // Search & filter
+        const searchInput = document.getElementById('liveSearch');
+        const filterBtns = document.querySelectorAll('.filters button');
+        let currentFilter = 'all';
+
+        searchInput.addEventListener('input', applyFilters);
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                applyFilters();
+            });
+        });
+
+        function applyFilters() {
+            const q = searchInput.value.toLowerCase();
+            const cards = document.querySelectorAll('.item-entry');
+            let visible = 0;
+            cards.forEach(card => {
+                const matchCat = currentFilter === 'all' || card.dataset.category === currentFilter;
+                const matchQ   = !q || card.dataset.name.includes(q) || card.dataset.location.includes(q);
+                card.style.display = (matchCat && matchQ) ? '' : 'none';
+                if (matchCat && matchQ) visible++;
+            });
+            document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+        }
+
+        // Verify claim
+        async function handleVerify(e, itemId) {
+            e.preventDefault();
+            const form = e.target;
+            const answer = form.answer.value;
+            const resultEl = document.getElementById('result-' + itemId);
+
+            const res = await fetch('/verify/' + itemId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'answer=' + encodeURIComponent(answer)
+            });
+            const data = await res.json();
+
+            resultEl.textContent = data.message;
+            resultEl.className = 'alert ' + (data.success ? 'alert-success' : 'alert-danger');
+            resultEl.style.display = 'block';
+
+            if (data.success) {
+                setTimeout(() => location.reload(), 2000);
+            }
+        }
+    </script>
+</body>
+</html>
