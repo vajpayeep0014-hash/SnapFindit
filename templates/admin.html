@@ -65,6 +65,7 @@
             <thead>
                 <tr>
                     <th>Photo</th><th>Item</th><th>Location</th><th>Category</th>
+                    <th>Verification Q &amp; A</th>
                     <th>Reporter</th><th>Date</th><th>Status</th><th>Actions</th>
                 </tr>
             </thead>
@@ -75,6 +76,12 @@
                 <td><strong>{{ item.name }}</strong></td>
                 <td>{{ item.location }}</td>
                 <td>{{ item.category }}</td>
+                <td style="font-size:0.8rem; max-width:200px;">
+                    {% if item.secret_question %}
+                    <span style="color:#555;">Q: {{ item.secret_question }}</span><br>
+                    <span style="color:#222; font-weight:bold;">A: {{ item.secret_answer }}</span>
+                    {% else %}—{% endif %}
+                </td>
                 <td style="font-size:0.8rem;">{{ item.reporter.email if item.reporter else '—' }}</td>
                 <td style="font-size:0.8rem;">{{ item.created_at.strftime('%d %b %Y') }}</td>
                 <td>
