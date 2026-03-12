@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — SnapFind</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Georgia, serif; background: #f5f5f0; color: #222; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+
+        .card { background: #fff; border: 1px solid #ddd; width: 100%; max-width: 380px; padding: 36px; }
+        .brand { font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 24px; }
+        h1 { font-size: 1.4rem; margin-bottom: 6px; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 24px; }
+
+        .hint { background: #f5f5f0; border: 1px solid #ddd; padding: 10px 14px; font-size: 0.82rem; color: #555; margin-bottom: 20px; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; }
+        .form-group input { width: 100%; padding: 9px 12px; border: 1px solid #ccc; font-family: Georgia, serif; font-size: 0.95rem; background: #fafafa; }
+        .form-group input:focus { outline: none; border-color: #222; background: #fff; }
+        .form-hint { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+
+        .flash { padding: 8px 12px; margin-bottom: 14px; font-size: 0.85rem; }
+        .flash.danger  { background: #f8d7da; color: #721c24; }
+        .flash.success { background: #d4edda; color: #155724; }
+
+        .submit-btn { width: 100%; padding: 10px; background: #222; color: #fff; border: none; font-family: Georgia, serif; font-size: 0.95rem; cursor: pointer; margin-top: 4px; }
+        .submit-btn:hover { background: #444; }
+
+        .switch { text-align: center; margin-top: 18px; font-size: 0.875rem; color: #888; }
+        .switch a { color: #222; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand">Lost &amp; Found</div>
+        <h1>Create account</h1>
+        <p class="subtitle">Join SnapFind with your college ID.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endwith %}
+
+        <div class="hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Aryan Sharma" required>
+            </div>
+            <div class="form-group">
+                <label>College Email</label>
+                <input type="email" name="email" placeholder="0901CS211001@medicaps.ac.in" required>
+                <div class="form-hint">Use your enrollment number email.</div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="At least 6 characters" required>
+            </div>
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" name="confirm" placeholder="Repeat password" required>
+            </div>
+            <button type="submit" class="submit-btn">Create Account</button>
+        </form>
+
+        <div class="switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
+    </div>
+</body>
+</html>
