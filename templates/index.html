@@ -3,35 +3,54 @@
 
 {% block content %}
 <style>
-    header { text-align: center; padding: 48px 24px 32px; }
-    header h1 { font-size: 2.2rem; margin-bottom: 8px; }
-    header p  { color: #666; font-size: 1rem; }
+    header { text-align: center; padding: 32px 16px 24px; }
+    header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    header p  { color: #666; font-size: 0.95rem; }
 
-    .stats { display: flex; justify-content: center; gap: 32px; margin-top: 20px; font-size: 0.9rem; color: #555; }
-    .stats strong { font-size: 1.4rem; display: block; color: #222; }
+    .stats { display: flex; justify-content: center; gap: 28px; margin-top: 16px; font-size: 0.9rem; color: #555; }
+    .stats strong { font-size: 1.3rem; display: block; color: #222; }
 
-    .tools { max-width: 720px; margin: 0 auto 28px; padding: 0 24px; }
+    .tools { max-width: 720px; margin: 0 auto 24px; padding: 0 16px; }
     .tools input[type="text"] {
         width: 100%; padding: 10px 14px;
         border: 1px solid #ccc; background: #fff;
         font-size: 1rem; font-family: Georgia, serif; margin-bottom: 10px;
     }
-    .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .toolbar-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; }
     .filters button {
         padding: 6px 14px; border: 1px solid #ccc; background: #fff;
         cursor: pointer; font-size: 0.85rem; font-family: Georgia, serif;
     }
     .filters button.active { background: #222; color: #fff; border-color: #222; }
     .report-btn {
-        margin-left: auto;
-        padding: 7px 16px; background: #222; color: #fff;
+        padding: 8px 16px; background: #222; color: #fff;
         border: none; cursor: pointer; font-size: 0.85rem; font-family: Georgia, serif;
+        white-space: nowrap; flex-shrink: 0;
     }
     .report-btn:hover { background: #444; }
 
+    /* Mobile: report button full width below filters */
+    @media (max-width: 500px) {
+        .toolbar-row { flex-direction: column; align-items: stretch; }
+        .report-btn { width: 100%; text-align: center; padding: 11px; font-size: 0.95rem; }
+        .filters { justify-content: flex-start; }
+        header h1 { font-size: 1.5rem; }
+    }
+
     .grid {
-        max-width: 960px; margin: 0 auto; padding: 0 24px 48px;
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px;
+        max-width: 960px; margin: 0 auto; padding: 0 16px 48px;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+    }
+
+    @media (max-width: 480px) {
+        .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card img { height: 140px; }
+    }
+    @media (max-width: 340px) {
+        .grid { grid-template-columns: 1fr; }
     }
 
     .card { background: #fff; border: 1px solid #ddd; }
@@ -78,10 +97,12 @@
 
 <div class="tools">
     <input type="text" id="liveSearch" placeholder="Search by name or location…" autocomplete="off">
-    <div class="filters">
-        <button class="active" data-filter="all">All</button>
-        <button data-filter="Electronics">Electronics</button>
-        <button data-filter="Generic">Other</button>
+    <div class="toolbar-row">
+        <div class="filters">
+            <button class="active" data-filter="all">All</button>
+            <button data-filter="Electronics">Electronics</button>
+            <button data-filter="Generic">Other</button>
+        </div>
         <button class="report-btn" onclick="openModal('uploadModal')">+ Report Found Item</button>
     </div>
 </div>
@@ -239,7 +260,7 @@
 
     // Search & filter
     const searchInput = document.getElementById('liveSearch');
-    const filterBtns  = document.querySelectorAll('.filters button[data-filter]');
+    const filterBtns  = document.querySelectorAll('.filters button');
     let currentFilter = 'all';
 
     searchInput.addEventListener('input', applyFilters);
