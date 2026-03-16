@@ -7,17 +7,23 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')   
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN = '@medicaps.ac.in'
 ADMIN_EMAILS = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 
 db = SQLAlchemy(app)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'pool_size': 5,
+    'max_overflow': 2
+}
 
 
 # ─── Models ────────────────────────────────────────────────────────────────────
