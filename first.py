@@ -7,8 +7,8 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = 'change-this-in-production-use-env-var'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///snapfind.db'
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
