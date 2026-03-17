@@ -42,6 +42,7 @@ class User(db.Model):
     name         = db.Column(db.String(120), nullable=False)
     password     = db.Column(db.String(300), nullable=False)
     is_admin     = db.Column(db.Boolean, default=False)
+    phone        = db.Column(db.String(20), nullable=True)
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     items_posted = db.relationship('Item', backref='reporter', lazy=True, foreign_keys='Item.reporter_id')
     claims       = db.relationship('Item', backref='claimer', lazy=True, foreign_keys='Item.claimer_id')
@@ -129,6 +130,7 @@ def register():
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         name     = request.form.get('name', '').strip()
+        phone    = request.form.get('phone', '').strip()
         password = request.form.get('password', '')
         confirm  = request.form.get('confirm', '')
 
@@ -148,6 +150,7 @@ def register():
         user = User(
             email    = email,
             name     = name,
+            phone    = phone,
             password = generate_password_hash(password),
             is_admin = email in ADMIN_EMAILS
         )
@@ -204,12 +207,16 @@ def upload_item():
         flash('Invalid file type.', 'danger')
         return redirect(url_for('index'))
 
-    upload_result = cloudinary.uploader.upload(
-    file,
-    format='jpg',
-    transformation=[{'quality': 'auto'}]
-    )
-    image_url = upload_result['secure_url']
+    try:
+        upload_result = cloudinary.uploader.upload(
+            file,
+            format='jpg',
+            transformation=[{'quality': 'auto'}]
+        )
+        image_url = upload_result['secure_url']
+    except Exception as e:
+        flash(f'Image upload failed: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
     user = current_user()
     item = Item(
@@ -250,7 +257,8 @@ def verify_claim(item_id):
         db.session.commit()
         reporter = User.query.get(item.reporter_id)
         contact = reporter.email if reporter else 'N/A'
-        msg = f'Verified! Contact the finder at: {contact}'
+        phone = reporter.phone if reporter and reporter.phone else 'Not provided'
+        msg = f'Verified! Contact the finder — Email: {contact} | Phone: {phone}'
         return jsonify({'success': True, 'message': msg, 'contact': contact}) if is_ajax else (flash(msg, 'success'), redirect(url_for('index')))[1]
     else:
         msg = 'Incorrect answer. Please try again.'
