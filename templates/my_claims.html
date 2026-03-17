@@ -78,6 +78,7 @@
                     <span class="status-badge status-claimed">✓ Claimed</span>
                     {% if item.reporter %}
                     <div class="contact-reveal">📧 {{ item.reporter.email }}</div>
+                    <div class="contact-reveal">📞 {{ item.reporter.phone if item.reporter.phone else 'Not provided' }}</div>
                     {% endif %}
                 </div>
             </div>
@@ -95,7 +96,7 @@
         {% if reported_items %}
         {% for item in reported_items %}
         <div class="item-row">
-            <img src="{{ url_for('static', filename='uploads/' + item.image_file) }}" alt="{{ item.name }}">
+            <img src="{{ item.image_file }}" alt="{{ item.name }}">
             <div class="item-row-body">
                 <div class="item-row-info">
                     <div class="item-row-name">{{ item.name }}</div>
