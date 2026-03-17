@@ -111,7 +111,7 @@
     {% for item in items %}
     <div class="card item-entry" data-category="{{ item.category }}" data-name="{{ item.name|lower }}" data-location="{{ item.location|lower }}">
         <div class="card-img-wrap">
-            <img src="{{ url_for('static', filename='uploads/' + item.image_file) }}" alt="{{ item.name }}" loading="lazy">
+            <img src="{{ item.image_file }}" alt="{{ item.name }}" loading="lazy">
             {% if item.category == 'Electronics' %}
             <div class="blur-badge">🔒 Verify to reveal</div>
             {% endif %}

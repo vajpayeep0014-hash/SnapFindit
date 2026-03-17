@@ -72,7 +72,7 @@
             <tbody>
             {% for item in items %}
             <tr class="trow" data-search="{{ item.name|lower }} {{ item.location|lower }}">
-                <td><img class="thumb" src="{{ url_for('static', filename='uploads/' + item.image_file) }}" alt="{{ item.name }}"></td>
+                <td><img class="thumb" src="{{ item.image_file }}" alt="{{ item.name }}"></td>
                 <td><strong>{{ item.name }}</strong></td>
                 <td>{{ item.location }}</td>
                 <td>{{ item.category }}</td>
