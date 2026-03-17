@@ -204,12 +204,12 @@ def upload_item():
         flash('Invalid file type.', 'danger')
         return redirect(url_for('index'))
 
-    try:
-        upload_result = cloudinary.uploader.upload(file)
-        image_url = upload_result['secure_url']
-    except Exception as e:
-        flash(f'Image upload failed: {str(e)}', 'danger')
-        return redirect(url_for('index'))
+    upload_result = cloudinary.uploader.upload(
+    file,
+    format='jpg',
+    transformation=[{'quality': 'auto'}]
+    )
+    image_url = upload_result['secure_url']
 
     user = current_user()
     item = Item(
