@@ -1,5 +1,7 @@
 import os
 import uuid
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,11 +9,17 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')   
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+
+cloudinary.config(
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key    = os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN = '@medicaps.ac.in'
@@ -45,7 +53,7 @@ class Item(db.Model):
     location        = db.Column(db.String(200), nullable=False)
     category        = db.Column(db.String(50), nullable=False, default='Generic')
     description     = db.Column(db.Text)
-    image_file      = db.Column(db.String(200), nullable=False)
+    image_file      = db.Column(db.String(500), nullable=False)
     secret_question = db.Column(db.String(300))
     secret_answer   = db.Column(db.String(300))
     serial_number   = db.Column(db.String(200))
@@ -179,9 +187,9 @@ def my_claims():
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_item():
-    name     = request.form.get('name', '').strip()
-    location = request.form.get('location', '').strip()
-    category = request.form.get('category', 'Generic')
+    name        = request.form.get('name', '').strip()
+    location    = request.form.get('location', '').strip()
+    category    = request.form.get('category', 'Generic')
     description = request.form.get('description', '').strip()
 
     if not name or not location:
@@ -196,10 +204,12 @@ def upload_item():
         flash('Invalid file type.', 'danger')
         return redirect(url_for('index'))
 
-    ext      = file.filename.rsplit('.', 1)[1].lower()
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    try:
+        upload_result = cloudinary.uploader.upload(file)
+        image_url = upload_result['secure_url']
+    except Exception as e:
+        flash(f'Image upload failed: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
     user = current_user()
     item = Item(
@@ -207,7 +217,7 @@ def upload_item():
         location        = location,
         category        = category,
         description     = description,
-        image_file      = filename,
+        image_file      = image_url,
         reporter_id     = user.id,
         secret_question = request.form.get('secret_question', '').strip(),
         secret_answer   = request.form.get('secret_answer', '').strip().lower(),
@@ -266,12 +276,6 @@ def admin():
 @admin_required
 def admin_delete(item_id):
     item = Item.query.get_or_404(item_id)
-    try:
-        img_path = os.path.join(app.config['UPLOAD_FOLDER'], item.image_file)
-        if os.path.exists(img_path):
-            os.remove(img_path)
-    except Exception:
-        pass
     db.session.delete(item)
     db.session.commit()
     flash('Item deleted.', 'success')
@@ -312,7 +316,6 @@ def stats():
 
 with app.app_context():
     db.create_all()
-    # Create a default admin if none exists
     if not User.query.filter_by(email='admin@medicaps.ac.in').first():
         admin_user = User(
             email    = 'admin@medicaps.ac.in',
