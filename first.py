@@ -146,6 +146,9 @@ def register():
         if User.query.filter_by(email=email).first():
             flash('An account with this email already exists.', 'danger')
             return render_template('register.html')
+        if User.query.filter_by(phone=phone).first():
+            flash('An account with this phone number already exists.', 'danger')
+            return render_template('register.html')
 
         user = User(
             email    = email,
