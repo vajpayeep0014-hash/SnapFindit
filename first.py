@@ -27,14 +27,14 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN = '@medicaps.ac.in'
 ADMIN_EMAILS = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 
-db = SQLAlchemy(app)
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
     'pool_size': 5,
     'max_overflow': 2
 }
-
+db = SQLAlchemy(app)
 
 # ─── Models ────────────────────────────────────────────────────────────────────
 
