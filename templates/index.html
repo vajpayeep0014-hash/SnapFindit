@@ -168,7 +168,7 @@
                                 <label class="file-label" for="matchCamera{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.82rem;">📷 Camera</label>
                             </div>
                             <input type="file" name="match_photo" id="matchGallery{{ item.id }}" accept="image/*" onchange="previewMatchImage(this, {{ item.id }})" style="display:none;">
-                            <input type="file" name="match_photo" id="matchCamera{{ item.id }}" accept="image/*" capture="environment" onchange="previewMatchImage(this, {{ item.id }})" style="display:none;">
+                            <input type="file" id="matchCamera{{ item.id }}" accept="image/*" capture="environment" onchange="syncMatchCamera(this, {{ item.id }})" style="display:none;">
                             <img id="matchPreview{{ item.id }}" alt="Preview" style="width:100%; margin-top:8px; display:none; border:1px solid #ddd;">
                         </div>
                         <button type="submit" class="btn btn-primary" style="width:100%;">Submit for Admin Review</button>
@@ -217,9 +217,13 @@
                 </div>
                 <div class="form-group">
                     <label>Photo</label>
-                    <label class="file-label" for="photoInput">📷 Take a photo or choose from gallery</label>
-                       <input type="file" name="photo" id="photoInput" accept="image/*" onchange="previewImage(this)">
-                       <img id="imagePreview" alt="Preview" style="width:100%; margin-top:8px; display:none; border:1px solid #ddd;">
+                    <div style="display:flex; gap:8px; margin-bottom:8px;">
+                        <label class="file-label" for="photoInput" style="flex:1; margin:0;">🖼️ Gallery</label>
+                        <label class="file-label" for="cameraInput" style="flex:1; margin:0;">📷 Camera</label>
+                    </div>
+                    <input type="file" name="photo" id="photoInput" accept="image/*" onchange="previewImage(this)" style="display:none;">
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="syncCamera(this)" style="display:none;">
+                    <img id="imagePreview" alt="Preview" style="width:100%; margin-top:8px; display:none; border:1px solid #ddd;">
                 </div>
                 <div class="form-group">
                     <label>Category</label>
@@ -263,16 +267,21 @@
     });
 
     function previewImage(input) {
-    const img = document.getElementById('imagePreview');
-    if (input.files && input.files[0]) {
-        img.src = URL.createObjectURL(input.files[0]);
-        img.style.display = 'block';
-        // Sync file to photoInput so form always submits it
-        const dt = new DataTransfer();
-        dt.items.add(input.files[0]);
-        document.getElementById('photoInput').files = dt.files;
+        const img = document.getElementById('imagePreview');
+        if (input.files && input.files[0]) {
+            img.src = URL.createObjectURL(input.files[0]);
+            img.style.display = 'block';
+        }
     }
-}
+
+    function syncCamera(input) {
+        if (input.files && input.files[0]) {
+            const dt = new DataTransfer();
+            dt.items.add(input.files[0]);
+            document.getElementById('photoInput').files = dt.files;
+            const img = document.getElementById('imagePreview');
+            img.src = URL.createObjectURL(input.files[0]);
+            img.style.display = 'block';
         }
     }
 
@@ -281,17 +290,17 @@
         if (input.files && input.files[0]) {
             img.src = URL.createObjectURL(input.files[0]);
             img.style.display = 'block';
-            // Sync file to both inputs
-            const gallery = document.getElementById('matchGallery' + itemId);
-            const camera  = document.getElementById('matchCamera' + itemId);
-            if (input.id === 'matchGallery' + itemId) {
-                // already set
-            } else {
-                // copy file to gallery input for form submission
-                const dt = new DataTransfer();
-                dt.items.add(input.files[0]);
-                gallery.files = dt.files;
-            }
+        }
+    }
+
+    function syncMatchCamera(input, itemId) {
+        if (input.files && input.files[0]) {
+            const dt = new DataTransfer();
+            dt.items.add(input.files[0]);
+            document.getElementById('matchGallery' + itemId).files = dt.files;
+            const img = document.getElementById('matchPreview' + itemId);
+            img.src = URL.createObjectURL(input.files[0]);
+            img.style.display = 'block';
         }
     }
 
