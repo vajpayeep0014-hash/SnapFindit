@@ -267,10 +267,16 @@
     });
 
     function previewImage(input) {
-        const img = document.getElementById('imagePreview');
-        if (input.files && input.files[0]) {
-            img.src = URL.createObjectURL(input.files[0]);
-            img.style.display = 'block';
+    const img = document.getElementById('imagePreview');
+    if (input.files && input.files[0]) {
+        img.src = URL.createObjectURL(input.files[0]);
+        img.style.display = 'block';
+        // Sync file to photoInput so form always submits it
+        const dt = new DataTransfer();
+        dt.items.add(input.files[0]);
+        document.getElementById('photoInput').files = dt.files;
+    }
+}
         }
     }
 
