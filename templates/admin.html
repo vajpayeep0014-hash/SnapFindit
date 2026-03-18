@@ -13,11 +13,13 @@
     .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 60px; }
 
     .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 24px; }
-    .tab-btn { padding: 10px 22px; background: none; border: none; font-family: Georgia, serif; font-size: 0.9rem; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab-btn { padding: 10px 22px; background: none; border: none; font-family: Georgia, serif; font-size: 0.9rem; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; position: relative; }
     .tab-btn.active { color: #222; border-bottom-color: #222; }
     .tab-btn:hover:not(.active) { color: #555; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+
+    .badge-count { display: inline-block; background: #c0392b; color: #fff; font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; margin-left: 6px; font-family: Georgia, serif; }
 
     .search-bar { width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid #ccc; font-family: Georgia, serif; font-size: 0.88rem; margin-bottom: 14px; background: #fff; }
     .search-bar:focus { outline: none; border-color: #222; }
@@ -29,15 +31,26 @@
     tr:hover td { background: #fafafa; }
 
     .thumb { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; display: block; }
+    .thumb-lg { width: 80px; height: 80px; object-fit: cover; border: 1px solid #ddd; display: block; }
 
     .action-form { display: inline; }
     .action-btn { padding: 4px 10px; border: 1px solid #ddd; background: #fff; font-family: Georgia, serif; font-size: 0.78rem; cursor: pointer; }
     .action-btn:hover { background: #222; color: #fff; border-color: #222; }
     .action-btn-danger:hover { background: #c0392b; border-color: #c0392b; }
+    .action-btn-success { border-color: #155724; color: #155724; }
+    .action-btn-success:hover { background: #155724; color: #fff; border-color: #155724; }
 
     .badge-claimed { font-size: 0.78rem; color: #155724; }
     .badge-active  { font-size: 0.78rem; color: #888; }
     .badge-admin   { font-size: 0.78rem; font-weight: bold; color: #222; }
+
+    .conflict-row { background: #fffbf0; }
+    .conflict-images { display: flex; gap: 8px; align-items: center; }
+    .conflict-images span { font-size: 0.75rem; color: #888; display: block; text-align: center; margin-top: 4px; }
+    .vs-badge { font-size: 0.8rem; color: #888; font-style: italic; }
+
+    .contact-info { font-size: 0.8rem; }
+    .contact-info div { margin-bottom: 3px; }
 </style>
 
 <header>
@@ -47,6 +60,7 @@
         <div><strong>{{ active }}</strong> Active</div>
         <div><strong>{{ claimed }}</strong> Returned</div>
         <div><strong>{{ user_count }}</strong> Users</div>
+        <div><strong>{{ conflict_count }}</strong> Conflicts</div>
         <div><strong>{{ active + claimed }}</strong> Total Reports</div>
     </div>
 </header>
@@ -55,6 +69,12 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
+        <button class="tab-btn" onclick="switchTab(event,'conflicts')">
+            Conflicts
+            {% if conflict_count > 0 %}
+            <span class="badge-count">{{ conflict_count }}</span>
+            {% endif %}
+        </button>
     </div>
 
     <!-- Items -->
@@ -112,7 +132,7 @@
         <table id="usersTable">
             <thead>
                 <tr>
-                    <th>Name</th><th>Email</th><th>Role</th><th>Joined</th>
+                    <th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th>
                     <th>Reported</th><th>Claimed</th><th>Actions</th>
                 </tr>
             </thead>
@@ -121,6 +141,7 @@
             <tr class="trow" data-search="{{ u.name|lower }} {{ u.email|lower }}">
                 <td><strong>{{ u.name }}</strong></td>
                 <td style="font-size:0.82rem;">{{ u.email }}</td>
+                <td style="font-size:0.82rem;">{{ u.phone or '—' }}</td>
                 <td>{% if u.is_admin %}<span class="badge-admin">Admin</span>{% else %}Student{% endif %}</td>
                 <td style="font-size:0.8rem;">{{ u.created_at.strftime('%d %b %Y') }}</td>
                 <td style="text-align:center;">{{ u.items_posted|length }}</td>
@@ -139,6 +160,72 @@
             </tbody>
         </table>
         </div>
+    </div>
+
+    <!-- Conflicts -->
+    <div class="tab-panel" id="tab-conflicts">
+        {% if conflicts %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Photo</th>
+                    <th>Item</th>
+                    <th>Claimant's Photo</th>
+                    <th>Finder Contact</th>
+                    <th>Claimant Contact</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for conflict in conflicts %}
+            <tr class="conflict-row">
+                <td>
+                    <img class="thumb-lg" src="{{ conflict.item.image_file }}" alt="{{ conflict.item.name }}">
+                    <span style="font-size:0.78rem; color:#555; display:block; margin-top:4px;">{{ conflict.item.name }}</span>
+                </td>
+                <td>
+                    <strong>{{ conflict.item.name }}</strong><br>
+                    <span style="font-size:0.8rem; color:#666;">📍 {{ conflict.item.location }}</span>
+                </td>
+                <td>
+                    <img class="thumb-lg" src="{{ conflict.uploaded_image }}" alt="Claimant photo">
+                </td>
+                <td>
+                    <div class="contact-info">
+                        {% if conflict.item.reporter %}
+                        <div>📧 {{ conflict.item.reporter.email }}</div>
+                        <div>📞 {{ conflict.item.reporter.phone or 'Not provided' }}</div>
+                        {% else %}—{% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div class="contact-info">
+                        <div>📧 {{ conflict.claimant.email }}</div>
+                        <div>📞 {{ conflict.claimant.phone or 'Not provided' }}</div>
+                    </div>
+                </td>
+                <td style="font-size:0.8rem;">{{ conflict.created_at.strftime('%d %b %Y') }}</td>
+                <td>
+                    <form class="action-form" method="POST" action="/admin/conflict/confirm/{{ conflict.id }}" onsubmit="return confirm('Confirm this match? Item will be marked as claimed.')">
+                        <button class="action-btn action-btn-success">✓ Confirm</button>
+                    </form>
+                    <form class="action-form" method="POST" action="/admin/conflict/reject/{{ conflict.id }}" onsubmit="return confirm('Reject this request?')" style="margin-top:4px;">
+                        <button class="action-btn action-btn-danger">✗ Reject</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:48px 24px; color:#888;">
+            <h3 style="color:#222; margin-bottom:6px;">No pending conflicts</h3>
+            <p>Photo match requests will appear here.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

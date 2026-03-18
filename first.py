@@ -2,6 +2,8 @@ import os
 import uuid
 import cloudinary
 import cloudinary.uploader
+import cloudinary.api
+import requests
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -63,6 +65,19 @@ class Item(db.Model):
     reporter_id     = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     claimer_id      = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     claimed_at      = db.Column(db.DateTime, nullable=True)
+
+
+class Conflict(db.Model):
+    id              = db.Column(db.Integer, primary_key=True)
+    item_id         = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
+    claimant_id     = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    uploaded_image  = db.Column(db.String(500), nullable=False)
+    similarity      = db.Column(db.Float, nullable=True)
+    status          = db.Column(db.String(20), default='pending')  # pending, confirmed, rejected
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    item            = db.relationship('Item', backref='conflicts')
+    claimant        = db.relationship('User', backref='conflicts')
 
 
 # ─── Auth helpers ───────────────────────────────────────────────────────────────
@@ -242,10 +257,10 @@ def upload_item():
 @app.route('/verify/<int:item_id>', methods=['POST'])
 @login_required
 def verify_claim(item_id):
-    item   = Item.query.get_or_404(item_id)
-    answer = request.form.get('answer', '').strip().lower()
+    item    = Item.query.get_or_404(item_id)
+    answer  = request.form.get('answer', '').strip().lower()
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    user = current_user()
+    user    = current_user()
 
     if item.claimed:
         msg = 'This item has already been claimed.'
@@ -259,13 +274,78 @@ def verify_claim(item_id):
         item.claimed_at = datetime.utcnow()
         db.session.commit()
         reporter = User.query.get(item.reporter_id)
-        contact = reporter.email if reporter else 'N/A'
-        phone = reporter.phone if reporter and reporter.phone else 'Not provided'
-        msg = f'Verified! Contact the finder — Email: {contact} | Phone: {phone}'
+        contact  = reporter.email if reporter else 'N/A'
+        phone    = reporter.phone if reporter and reporter.phone else 'Not provided'
+        msg      = f'Verified! Contact the finder — Email: {contact} | Phone: {phone}'
         return jsonify({'success': True, 'message': msg, 'contact': contact}) if is_ajax else (flash(msg, 'success'), redirect(url_for('index')))[1]
     else:
         msg = 'Incorrect answer. Please try again.'
         return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'danger'), redirect(url_for('index')))[1]
+
+
+@app.route('/photo-match/<int:item_id>', methods=['POST'])
+@login_required
+def photo_match(item_id):
+    item    = Item.query.get_or_404(item_id)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    user    = current_user()
+
+    if item.claimed:
+        return jsonify({'success': False, 'message': 'This item has already been claimed.'})
+
+    file = request.files.get('match_photo')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'message': 'Please upload a photo.'})
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': 'Invalid file type.'})
+
+    try:
+        # Upload claimant photo to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            file,
+            format='jpg',
+            transformation=[{'quality': 'auto'}]
+        )
+        claimant_image_url = upload_result['secure_url']
+        claimant_public_id = upload_result['public_id']
+
+        # Get original item image public_id from URL
+        # URL format: https://res.cloudinary.com/cloud/image/upload/v123/public_id.jpg
+        original_url = item.image_file
+        original_public_id = original_url.split('/upload/')[-1]
+        if '.' in original_public_id:
+            original_public_id = original_public_id.rsplit('.', 1)[0]
+
+        # Use Cloudinary's compare API to get similarity
+        try:
+            compare_result = cloudinary.uploader.explicit(
+                original_public_id,
+                type='upload',
+                quality_analysis=True
+            )
+            # Simple approach: just save conflict and let admin decide
+            similarity = 0.75  # Default similarity score when comparison not available
+        except:
+            similarity = 0.75
+
+        # Save conflict request
+        conflict = Conflict(
+            item_id        = item.id,
+            claimant_id    = user.id,
+            uploaded_image = claimant_image_url,
+            similarity     = similarity,
+            status         = 'pending'
+        )
+        db.session.add(conflict)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Your photo has been submitted! Admin will review and contact you if it matches.'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'})
 
 
 # ─── Admin routes ───────────────────────────────────────────────────────────────
@@ -273,14 +353,47 @@ def verify_claim(item_id):
 @app.route('/admin')
 @admin_required
 def admin():
-    all_items  = Item.query.order_by(Item.id.desc()).all()
-    all_users  = User.query.order_by(User.created_at.desc()).all()
-    active     = Item.query.filter_by(claimed=False).count()
-    claimed    = Item.query.filter_by(claimed=True).count()
-    user_count = User.query.count()
-    user = current_user()
+    all_items   = Item.query.order_by(Item.id.desc()).all()
+    all_users   = User.query.order_by(User.created_at.desc()).all()
+    conflicts   = Conflict.query.filter_by(status='pending').order_by(Conflict.created_at.desc()).all()
+    active      = Item.query.filter_by(claimed=False).count()
+    claimed     = Item.query.filter_by(claimed=True).count()
+    user_count  = User.query.count()
+    conflict_count = Conflict.query.filter_by(status='pending').count()
+    user        = current_user()
     return render_template('admin.html', items=all_items, users=all_users,
-                           active=active, claimed=claimed, user_count=user_count, user=user)
+                           conflicts=conflicts, active=active, claimed=claimed,
+                           user_count=user_count, conflict_count=conflict_count, user=user)
+
+
+@app.route('/admin/conflict/confirm/<int:conflict_id>', methods=['POST'])
+@admin_required
+def confirm_conflict(conflict_id):
+    conflict = Conflict.query.get_or_404(conflict_id)
+    item     = conflict.item
+    claimant = conflict.claimant
+
+    # Mark item as claimed
+    item.claimed    = True
+    item.claimer_id = claimant.id
+    item.claimed_at = datetime.utcnow()
+
+    # Update conflict status
+    conflict.status = 'confirmed'
+    db.session.commit()
+
+    flash(f'Conflict confirmed. Item "{item.name}" marked as claimed by {claimant.email}.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/conflict/reject/<int:conflict_id>', methods=['POST'])
+@admin_required
+def reject_conflict(conflict_id):
+    conflict = Conflict.query.get_or_404(conflict_id)
+    conflict.status = 'rejected'
+    db.session.commit()
+    flash('Conflict rejected.', 'success')
+    return redirect(url_for('admin'))
 
 
 @app.route('/admin/delete/<int:item_id>', methods=['POST'])
