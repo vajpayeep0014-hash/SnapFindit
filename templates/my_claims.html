@@ -67,7 +67,7 @@
         {% if claimed_items %}
         {% for item in claimed_items %}
         <div class="item-row">
-            <img src="{{ url_for('static', filename='uploads/' + item.image_file) }}" alt="{{ item.name }}">
+           <img src="{{ item.image_file }}" alt="{{ item.name }}">
             <div class="item-row-body">
                 <div class="item-row-info">
                     <div class="item-row-name">{{ item.name }}</div>
