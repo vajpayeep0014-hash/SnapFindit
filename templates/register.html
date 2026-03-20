@@ -1,178 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account — SnapFind</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0d0d0f; --bg2: #141417; --surface: #1f1f26; --surface2: #26262e;
-            --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
-            --text: #f0efe8; --muted: #8a8a9a; --faint: #3a3a48;
-            --accent: #e8c97e; --accent2: #f5dfa0;
-            --accent-dim: rgba(232,201,126,0.1);
-            --success: #5fb88a; --danger: #e06b6b;
-            --radius: 10px; --radius-lg: 16px;
-            --font-head: 'Syne', sans-serif;
-            --font-body: 'DM Sans', sans-serif;
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: var(--font-body);
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            -webkit-font-smoothing: antialiased;
-            position: relative;
-        }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background: radial-gradient(ellipse at 50% 0%, rgba(232,201,126,0.07) 0%, transparent 60%);
-            pointer-events: none;
-        }
-
-        .auth-wrap { width: 100%; max-width: 420px; position: relative; z-index: 1; }
-
-        .auth-brand {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 32px;
-        }
-        .auth-brand-dot {
-            width: 8px; height: 8px; background: var(--accent);
-            border-radius: 50%; box-shadow: 0 0 12px var(--accent);
-        }
-        .auth-brand-name { font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; color: var(--text); }
-
-        .auth-card {
-            background: var(--bg2);
-            border: 1px solid var(--border2);
-            border-radius: var(--radius-lg);
-            padding: 36px;
-        }
-        .auth-card h1 { font-family: var(--font-head); font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
-        .auth-subtitle { color: var(--muted); font-size: 0.88rem; font-weight: 300; margin-bottom: 24px; }
-
-        .auth-hint {
-            background: var(--accent-dim);
-            border: 1px solid rgba(232,201,126,0.2);
-            border-radius: var(--radius);
-            padding: 10px 14px;
-            font-size: 0.8rem;
-            color: var(--accent2);
-            margin-bottom: 22px;
-            line-height: 1.5;
-        }
-
-        .flash { padding: 10px 14px; margin-bottom: 16px; font-size: 0.83rem; border-radius: var(--radius); }
-        .flash.danger  { background: rgba(224,107,107,0.1); color: var(--danger); border: 1px solid rgba(224,107,107,0.2); }
-        .flash.success { background: rgba(95,184,138,0.1); color: var(--success); border: 1px solid rgba(95,184,138,0.2); }
-
-        .form-group { margin-bottom: 16px; }
-        .form-group label {
-            display: block;
-            font-size: 0.74rem;
-            font-weight: 600;
-            letter-spacing: 0.6px;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-bottom: 7px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1px solid var(--border2);
-            border-radius: var(--radius);
-            font-family: var(--font-body);
-            font-size: 0.92rem;
-            background: var(--surface);
-            color: var(--text);
-            transition: border-color 0.2s, background 0.2s;
-            -webkit-appearance: none;
-        }
-        .form-group input::placeholder { color: var(--faint); }
-        .form-group input:focus { outline: none; border-color: var(--accent); background: var(--surface2); }
-        .form-hint { font-size: 0.73rem; color: var(--muted); margin-top: 5px; }
-
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        @media (max-width: 440px) { .form-row { grid-template-columns: 1fr; } }
-
-        .submit-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--accent);
-            color: #0d0c09;
-            border: none;
-            border-radius: var(--radius);
-            font-family: var(--font-head);
-            font-size: 0.92rem;
-            font-weight: 700;
-            cursor: pointer;
-            letter-spacing: 0.3px;
-            transition: background 0.2s, transform 0.15s;
-            margin-top: 4px;
-        }
-        .submit-btn:hover { background: var(--accent2); transform: translateY(-1px); }
-
-        .auth-switch { text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--muted); }
-        .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 500; }
-        .auth-switch a:hover { text-decoration: underline; }
+        :root{--bg:#070a12;--bg2:#0c1120;--surface:rgba(255,255,255,.04);--surface2:rgba(255,255,255,.08);--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);--text:#dde8f8;--muted:#6a7d9e;--faint:#1e2d4a;--accent:#00d4ff;--accent2:#38e8ff;--accent-dim:rgba(0,212,255,.1);--accent-glow:rgba(0,212,255,.22);--success:#34d399;--danger:#f87171;--radius:12px;--radius-lg:18px;--font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+        .orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.13;animation:float 20s ease-in-out infinite alternate;}
+        .orb-1{width:600px;height:600px;background:#00d4ff;top:-200px;left:-150px;}
+        .orb-2{width:500px;height:500px;background:#7c3aed;bottom:-180px;right:-130px;animation-delay:-8s;}
+        @keyframes float{0%{transform:translate(0,0)}100%{transform:translate(-15px,30px)}}
+        canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+        .wrap{width:100%;max-width:420px;position:relative;z-index:1;}
+        .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+        .brand-icon{width:32px;height:32px;background:var(--accent-dim);border:1px solid rgba(0,212,255,.25);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--accent);box-shadow:0 0 16px var(--accent-glow);}
+        .brand-name{font-family:var(--font-head);font-weight:800;font-size:1.1rem;color:var(--text);}
+        .card{background:rgba(12,17,32,.92);backdrop-filter:blur(24px);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:36px;box-shadow:0 0 60px rgba(0,212,255,.05),0 32px 64px rgba(0,0,0,.5);}
+        .card h1{font-family:var(--font-head);font-size:1.65rem;font-weight:800;margin-bottom:6px;}
+        .subtitle{color:var(--muted);font-size:.88rem;font-weight:300;margin-bottom:22px;}
+        .hint{background:var(--accent-dim);border:1px solid rgba(0,212,255,.18);border-radius:var(--radius);padding:10px 14px;font-size:.79rem;color:var(--accent2);margin-bottom:20px;line-height:1.5;}
+        .flash{padding:10px 14px;margin-bottom:14px;font-size:.83rem;border-radius:var(--radius);}
+        .flash.danger{background:rgba(248,113,113,.08);color:var(--danger);border:1px solid rgba(248,113,113,.18);}
+        .fg{margin-bottom:16px;}
+        .fr{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        @media(max-width:440px){.fr{grid-template-columns:1fr;}}
+        .fg label{display:block;font-size:.71rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+        .fg input{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--font-body);font-size:.92rem;background:var(--surface);color:var(--text);transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;}
+        .fg input::placeholder{color:var(--faint);}
+        .fg input:focus{outline:none;border-color:rgba(0,212,255,.45);box-shadow:0 0 0 3px rgba(0,212,255,.07);}
+        .fh{font-size:.72rem;color:var(--muted);margin-top:5px;}
+        .submit-btn{width:100%;padding:12px;background:var(--accent);color:#07090f;border:none;border-radius:var(--radius);font-family:var(--font-head);font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 0 20px var(--accent-glow);margin-top:4px;}
+        .submit-btn:hover{background:var(--accent2);box-shadow:0 0 32px rgba(0,212,255,.45);transform:translateY(-1px);}
+        .switch{text-align:center;margin-top:18px;font-size:.84rem;color:var(--muted);}
+        .switch a{color:var(--accent);text-decoration:none;font-weight:500;}
     </style>
 </head>
 <body>
-<div class="auth-wrap">
-    <div class="auth-brand">
-        <span class="auth-brand-dot"></span>
-        <span class="auth-brand-name">SnapFind</span>
-    </div>
-
-    <div class="auth-card">
+<div class="orb orb-1"></div><div class="orb orb-2"></div>
+<canvas id="c"></canvas>
+<div class="wrap">
+    <div class="brand"><span class="brand-icon">◈</span><span class="brand-name">SnapFind</span></div>
+    <div class="card">
         <h1>Create account</h1>
-        <p class="auth-subtitle">Join SnapFind with your Medicaps ID.</p>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-        <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
-        {% endwith %}
-
-        <div class="auth-hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
-
+        <p class="subtitle">Join SnapFind with your Medicaps ID.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
+        <div class="hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
         <form method="POST">
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="name" placeholder="Aryan Sharma" required>
-            </div>
-            <div class="form-group">
-                <label>College Email</label>
-                <input type="email" name="email" placeholder="0901CS211001@medicaps.ac.in" required>
-                <div class="form-hint">Use your enrollment number email.</div>
-            </div>
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="tel" name="phone" placeholder="9876543210" required>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" placeholder="Min 6 characters" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirm</label>
-                    <input type="password" name="confirm" placeholder="Repeat password" required>
-                </div>
+            <div class="fg"><label>Full Name</label><input type="text" name="name" placeholder="Aryan Sharma" required></div>
+            <div class="fg"><label>College Email</label><input type="email" name="email" placeholder="0901CS211001@medicaps.ac.in" required><div class="fh">Use your enrollment number email.</div></div>
+            <div class="fg"><label>Phone Number</label><input type="tel" name="phone" placeholder="9876543210" required></div>
+            <div class="fr">
+                <div class="fg"><label>Password</label><input type="password" name="password" placeholder="Min 6 chars" required></div>
+                <div class="fg"><label>Confirm</label><input type="password" name="confirm" placeholder="Repeat" required></div>
             </div>
             <button type="submit" class="submit-btn">Create Account →</button>
         </form>
     </div>
-
-    <div class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
+    <div class="switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
 </div>
+<script>
+(function(){const cv=document.getElementById('c'),ctx=cv.getContext('2d');let W,H,pts;const N=55,D=130,CLR='0,212,255';function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;}function mk(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.3+.4};}resize();pts=Array.from({length:N},mk);window.addEventListener('resize',resize);(function loop(){ctx.clearRect(0,0,W,H);for(let i=0;i<N;i++){const p=pts[i];p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(${CLR},.5)`;ctx.fill();for(let j=i+1;j<N;j++){const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);if(d<D){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=`rgba(${CLR},${(1-d/D)*.15})`;ctx.lineWidth=.5;ctx.stroke();}}}requestAnimationFrame(loop);})();})();
+</script>
 </body>
 </html>

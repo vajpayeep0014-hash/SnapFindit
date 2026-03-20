@@ -3,338 +3,164 @@
 
 {% block content %}
 <style>
-    /* ── Hero ── */
     .hero {
-        position: relative;
-        text-align: center;
-        padding: 64px 24px 48px;
-        overflow: hidden;
-        z-index: 1;
-    }
-    .hero::before {
-        content: '';
-        position: absolute;
-        top: -60px; left: 50%;
-        transform: translateX(-50%);
-        width: 600px; height: 300px;
-        background: radial-gradient(ellipse at center, rgba(232,201,126,0.08) 0%, transparent 70%);
-        pointer-events: none;
+        position: relative; text-align: center;
+        padding: 72px 24px 52px; z-index: 1;
     }
     .hero-eyebrow {
-        font-size: 0.72rem;
-        font-weight: 600;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--accent);
-        margin-bottom: 16px;
-        font-family: var(--font-body);
+        font-size: 0.7rem; font-weight: 600; letter-spacing: 2.5px;
+        text-transform: uppercase; color: var(--accent);
+        margin-bottom: 18px; font-family: var(--font-body);
     }
     .hero h1 {
         font-family: var(--font-head);
-        font-size: clamp(2.2rem, 5vw, 3.4rem);
-        font-weight: 800;
-        color: var(--text);
-        line-height: 1.1;
-        letter-spacing: -0.5px;
-        margin-bottom: 14px;
+        font-size: clamp(2.4rem, 5.5vw, 3.8rem);
+        font-weight: 800; color: var(--text);
+        line-height: 1.08; letter-spacing: -0.5px; margin-bottom: 16px;
     }
-    .hero h1 span { color: var(--accent); }
+    .hero h1 em {
+        font-style: normal; color: var(--accent);
+        text-shadow: 0 0 32px var(--accent-glow);
+    }
     .hero-sub {
-        font-size: 0.95rem;
-        color: var(--muted);
-        font-weight: 300;
-        max-width: 420px;
-        margin: 0 auto 32px;
-        line-height: 1.65;
+        font-size: 0.95rem; color: var(--muted); font-weight: 300;
+        max-width: 400px; margin: 0 auto 36px; line-height: 1.7;
     }
-
-    /* Stats pills */
-    .stats-row {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 0;
-    }
+    .stats-row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .stat-pill {
-        background: var(--surface);
-        border: 1px solid var(--border2);
-        border-radius: 40px;
-        padding: 8px 18px;
-        font-size: 0.82rem;
-        color: var(--muted);
-        display: flex;
-        align-items: center;
-        gap: 7px;
+        background: var(--surface); border: 1px solid var(--border2);
+        border-radius: 40px; padding: 8px 20px; font-size: 0.8rem;
+        color: var(--muted); display: flex; align-items: center; gap: 8px;
+        backdrop-filter: blur(12px);
     }
-    .stat-pill strong {
-        font-weight: 600;
-        font-family: var(--font-head);
-        color: var(--text);
-        font-size: 1rem;
-    }
-    .stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0; }
+    .stat-pill strong { font-family: var(--font-head); font-weight: 700; color: var(--text); font-size: 1rem; }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); flex-shrink: 0; }
 
-    /* ── Search & toolbar ── */
-    .tools {
-        max-width: 760px;
-        margin: 0 auto 28px;
-        padding: 0 20px;
-    }
-    .search-wrap {
-        position: relative;
-        margin-bottom: 12px;
-    }
-    .search-icon {
-        position: absolute;
-        left: 16px; top: 50%;
-        transform: translateY(-50%);
-        color: var(--muted);
-        font-size: 0.95rem;
-        pointer-events: none;
-    }
+    /* Tools */
+    .tools { max-width: 760px; margin: 0 auto 28px; padding: 0 20px; position: relative; z-index: 1; }
+    .search-wrap { position: relative; margin-bottom: 12px; }
+    .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1rem; pointer-events: none; }
     .tools input[type="text"] {
-        width: 100%;
-        padding: 13px 16px 13px 44px;
-        border: 1px solid var(--border2);
-        border-radius: var(--radius-lg);
-        background: var(--surface);
-        font-size: 0.95rem;
-        font-family: var(--font-body);
-        color: var(--text);
-        transition: border-color 0.2s, background 0.2s;
+        width: 100%; padding: 13px 16px 13px 46px;
+        border: 1px solid var(--border2); border-radius: var(--radius-lg);
+        background: var(--surface); font-size: 0.95rem;
+        font-family: var(--font-body); color: var(--text);
+        transition: border-color 0.2s, box-shadow 0.2s; backdrop-filter: blur(12px);
     }
     .tools input[type="text"]::placeholder { color: var(--faint); }
-    .tools input[type="text"]:focus {
-        outline: none;
-        border-color: var(--accent);
-        background: var(--surface2);
-    }
+    .tools input[type="text"]:focus { outline: none; border-color: rgba(0,212,255,.4); box-shadow: 0 0 0 3px rgba(0,212,255,.07); }
 
-    .toolbar-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
+    .toolbar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }
     .filters button {
-        padding: 6px 16px;
-        border: 1px solid var(--border2);
-        background: transparent;
-        cursor: pointer;
-        font-size: 0.78rem;
-        font-weight: 500;
-        font-family: var(--font-body);
-        color: var(--muted);
-        border-radius: 40px;
-        transition: all 0.2s;
-        letter-spacing: 0.2px;
+        padding: 6px 16px; border: 1px solid var(--border2);
+        background: transparent; cursor: pointer;
+        font-size: 0.78rem; font-weight: 500; font-family: var(--font-body);
+        color: var(--muted); border-radius: 40px; transition: all 0.2s;
     }
-    .filters button:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
-    .filters button.active {
-        background: var(--accent);
-        color: #0d0c09;
-        border-color: var(--accent);
-        font-weight: 600;
-    }
+    .filters button:hover { color: var(--text); background: var(--surface); }
+    .filters button.active { background: var(--accent); color: #07090f; border-color: var(--accent); font-weight: 700; box-shadow: 0 0 14px var(--accent-glow); }
 
     .report-btn {
-        padding: 8px 18px;
-        background: var(--accent);
-        color: #0d0c09;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.82rem;
-        font-weight: 600;
-        font-family: var(--font-body);
-        white-space: nowrap;
-        flex-shrink: 0;
-        transition: background 0.2s, transform 0.15s;
-        letter-spacing: 0.2px;
+        padding: 9px 20px; background: var(--accent); color: #07090f;
+        border: none; border-radius: 10px; cursor: pointer;
+        font-size: 0.82rem; font-weight: 700; font-family: var(--font-body);
+        white-space: nowrap; flex-shrink: 0; transition: all 0.2s;
+        box-shadow: 0 0 16px var(--accent-glow);
     }
-    .report-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+    .report-btn:hover { background: var(--accent2); box-shadow: 0 0 28px rgba(0,212,255,.45); transform: translateY(-1px); }
 
     @media (max-width: 500px) {
         .toolbar-row { flex-direction: column; align-items: stretch; }
         .report-btn { text-align: center; padding: 11px; }
     }
 
-    /* ── Grid ── */
+    /* Grid */
     .grid {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 0 20px 60px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-        gap: 18px;
+        max-width: 1000px; margin: 0 auto; padding: 0 20px 60px;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr));
+        gap: 18px; position: relative; z-index: 1;
     }
-    @media (max-width: 480px) {
-        .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card img { height: 140px; }
-    }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr 1fr; gap: 12px; } .card img { height: 140px; } }
     @media (max-width: 340px) { .grid { grid-template-columns: 1fr; } }
 
-    /* ── Card ── */
+    /* Card */
     .card {
-        background: var(--bg2);
+        background: rgba(255,255,255,0.03);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.25s;
+        border-radius: var(--radius-lg); overflow: hidden;
+        transition: transform 0.28s cubic-bezier(.34,1.56,.64,1), border-color 0.2s, box-shadow 0.28s;
         cursor: pointer;
     }
     .card:hover {
-        transform: translateY(-4px);
-        border-color: var(--border2);
-        box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+        transform: translateY(-6px);
+        border-color: rgba(0,212,255,.22);
+        box-shadow: 0 20px 50px rgba(0,0,0,.4), 0 0 30px rgba(0,212,255,.06);
     }
 
-    .card-img-wrap {
-        position: relative;
-        overflow: hidden;
-        border-bottom: 1px solid var(--border);
-    }
-    .card img {
-        width: 100%;
-        height: 190px;
-        object-fit: cover;
-        display: block;
-        transition: transform 0.4s ease;
-    }
-    .card:hover img { transform: scale(1.04); }
-
-    .card[data-category="Electronics"] img { filter: blur(6px) brightness(0.7); }
+    .card-img-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
+    .card img { width: 100%; height: 190px; object-fit: cover; display: block; transition: transform 0.4s ease; }
+    .card:hover img { transform: scale(1.05); }
+    .card[data-category="Electronics"] img { filter: blur(6px) brightness(0.65); }
 
     .blur-badge {
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(13,13,15,0.75);
-        border: 1px solid var(--border2);
-        color: var(--accent);
-        font-size: 0.72rem;
-        font-weight: 600;
-        font-family: var(--font-body);
-        letter-spacing: 0.8px;
-        padding: 6px 14px;
-        border-radius: 40px;
-        pointer-events: none;
-        white-space: nowrap;
-        backdrop-filter: blur(4px);
+        position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%,-50%);
+        background: rgba(7,10,18,.8); border: 1px solid rgba(0,212,255,.25);
+        color: var(--accent); font-size: 0.7rem; font-weight: 600;
+        letter-spacing: .8px; padding: 6px 14px; border-radius: 40px;
+        pointer-events: none; white-space: nowrap; backdrop-filter: blur(4px);
     }
 
-    .card-category-badge {
-        position: absolute;
-        top: 10px; left: 10px;
-        background: rgba(13,13,15,0.8);
-        border: 1px solid var(--border2);
-        color: var(--accent);
-        font-size: 0.65rem;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 40px;
-        backdrop-filter: blur(4px);
-        font-family: var(--font-body);
+    .card-cat-badge {
+        position: absolute; top: 10px; left: 10px;
+        background: rgba(7,10,18,.78); border: 1px solid var(--border2);
+        color: var(--accent); font-size: 0.62rem; font-weight: 700;
+        letter-spacing: 1px; text-transform: uppercase;
+        padding: 3px 10px; border-radius: 40px; backdrop-filter: blur(4px);
     }
 
     .card-body { padding: 16px; }
-    .card-body h3 {
-        font-family: var(--font-head);
-        font-size: 0.98rem;
-        font-weight: 700;
-        margin-bottom: 5px;
-        color: var(--text);
-        line-height: 1.3;
-    }
-    .card-body .loc {
-        font-size: 0.8rem;
-        color: var(--muted);
-        margin-bottom: 3px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .card-body .when {
-        font-size: 0.74rem;
-        color: var(--faint);
-        margin-bottom: 14px;
-    }
+    .card-body h3 { font-family: var(--font-head); font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; color: var(--text); }
+    .card-body .loc { font-size: 0.79rem; color: var(--muted); margin-bottom: 3px; }
+    .card-body .when { font-size: 0.73rem; color: var(--faint); margin-bottom: 14px; }
     .card-claim-btn {
-        width: 100%;
-        padding: 9px;
-        background: var(--accent-dim);
-        border: 1px solid rgba(232,201,126,0.2);
-        border-radius: 8px;
-        color: var(--accent);
-        cursor: pointer;
-        font-family: var(--font-head);
-        font-size: 0.82rem;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        transition: background 0.2s, border-color 0.2s;
+        width: 100%; padding: 9px;
+        background: var(--accent-dim); border: 1px solid rgba(0,212,255,.18);
+        border-radius: 9px; color: var(--accent); cursor: pointer;
+        font-family: var(--font-head); font-size: 0.8rem; font-weight: 700;
+        letter-spacing: .3px; transition: all 0.2s;
     }
-    .card-claim-btn:hover { background: rgba(232,201,126,0.2); border-color: rgba(232,201,126,0.4); }
+    .card-claim-btn:hover { background: rgba(0,212,255,.18); border-color: rgba(0,212,255,.35); box-shadow: 0 0 12px rgba(0,212,255,.15); }
 
-    /* ── Empty ── */
-    .empty { text-align: center; padding: 72px 24px; color: var(--muted); grid-column: 1 / -1; }
-    .empty-icon { font-size: 2.5rem; margin-bottom: 16px; opacity: 0.4; }
+    .empty { text-align: center; padding: 72px 24px; color: var(--muted); grid-column: 1/-1; }
     .empty h3 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 
-    #noResults { display: none; text-align: center; padding: 60px 24px; color: var(--muted); max-width: 960px; margin: 0 auto; }
+    #noResults { display: none; text-align: center; padding: 60px 24px; color: var(--muted); max-width: 960px; margin: 0 auto; position: relative; z-index:1; }
     #noResults h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 8px; }
 
-    /* ── Divider ── */
-    .divider {
-        text-align: center;
-        margin: 18px 0;
-        font-size: 0.75rem;
-        color: var(--faint);
-        position: relative;
-    }
-    .divider::before, .divider::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        width: 44%;
-        height: 1px;
-        background: var(--border);
-    }
-    .divider::before { left: 0; }
-    .divider::after  { right: 0; }
+    .divider { text-align: center; margin: 18px 0; font-size: 0.73rem; color: var(--faint); position: relative; }
+    .divider::before, .divider::after { content:''; position:absolute; top:50%; width:44%; height:1px; background:var(--border); }
+    .divider::before { left:0; } .divider::after { right:0; }
 
-    /* ── Photo match section ── */
     .photo-match-section {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px;
-        margin-top: 4px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 16px; margin-top: 4px;
     }
     .photo-match-section p { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; line-height: 1.55; }
 </style>
 
-<!-- Hero -->
 <div class="hero">
     <div class="hero-eyebrow">Medicaps University</div>
-    <h1>Find what's <span>lost.</span><br>Return what's found.</h1>
-    <p class="hero-sub">A trusted space for students to report and reclaim lost belongings on campus.</p>
+    <h1>Find what's <em>lost.</em><br>Return what's found.</h1>
+    <p class="hero-sub">A trusted space for Medicaps students to report and reclaim lost belongings on campus.</p>
     <div class="stats-row">
-        <div class="stat-pill">
-            <span class="stat-dot"></span>
-            <strong id="activeCount">—</strong> active items
-        </div>
-        <div class="stat-pill">
-            <strong id="claimedCount">—</strong> returned
-        </div>
+        <div class="stat-pill"><span class="stat-dot"></span><strong id="activeCount">—</strong> active items</div>
+        <div class="stat-pill"><strong id="claimedCount">—</strong> returned</div>
     </div>
 </div>
 
-<!-- Tools -->
 <div class="tools">
     <div class="search-wrap">
         <span class="search-icon">⌕</span>
@@ -350,30 +176,22 @@
     </div>
 </div>
 
-<!-- Grid -->
 <div class="grid" id="itemsGrid">
     {% for item in items %}
-    <div class="card item-entry"
-         data-category="{{ item.category }}"
-         data-name="{{ item.name|lower }}"
-         data-location="{{ item.location|lower }}"
-         onclick="openModal('verifyModal{{ item.id }}')">
+    <div class="card item-entry" data-category="{{ item.category }}" data-name="{{ item.name|lower }}" data-location="{{ item.location|lower }}" onclick="openModal('verifyModal{{ item.id }}')">
         <div class="card-img-wrap">
             <img src="{{ item.image_file }}" alt="{{ item.name }}" loading="lazy">
-            <span class="card-category-badge">{{ item.category }}</span>
-            {% if item.category == 'Electronics' %}
-            <div class="blur-badge">🔒 Verify to reveal</div>
-            {% endif %}
+            <span class="card-cat-badge">{{ item.category }}</span>
+            {% if item.category == 'Electronics' %}<div class="blur-badge">🔒 Verify to reveal</div>{% endif %}
         </div>
         <div class="card-body">
             <h3>{{ item.name }}</h3>
             <div class="loc">📍 {{ item.location }}</div>
             <div class="when">{{ item.created_at.strftime('%d %b %Y') }}</div>
-            <button class="card-claim-btn" onclick="event.stopPropagation(); openModal('verifyModal{{ item.id }}')">Claim this item →</button>
+            <button class="card-claim-btn" onclick="event.stopPropagation();openModal('verifyModal{{ item.id }}')">Claim this item →</button>
         </div>
     </div>
 
-    <!-- Claim Modal -->
     <div class="modal-overlay" id="verifyModal{{ item.id }}">
         <div class="modal">
             <div class="modal-head">
@@ -382,7 +200,6 @@
             </div>
             <div class="modal-body">
                 <div id="result-{{ item.id }}" class="alert" style="display:none;"></div>
-
                 <form onsubmit="handleVerify(event, {{ item.id }})">
                     <div class="form-group">
                         <label>Question from finder</label>
@@ -390,27 +207,25 @@
                         <input type="text" name="answer" placeholder="Your answer…" required autocomplete="off">
                         <div class="form-hint">Not case sensitive.</div>
                     </div>
-                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('verifyModal{{ item.id }}')">Cancel</button>
                         <button type="submit" class="btn btn-primary">Verify Claim</button>
                     </div>
                 </form>
-
                 <div class="divider">or</div>
-
                 <div class="photo-match-section">
-                    <p>Can't answer the question? Upload a photo of the item and an admin will verify your ownership.</p>
+                    <p>Can't answer the question? Upload a photo and an admin will verify your ownership.</p>
                     <div id="match-result-{{ item.id }}" class="alert" style="display:none;"></div>
                     <form onsubmit="handlePhotoMatch(event, {{ item.id }})" enctype="multipart/form-data">
                         <div class="form-group">
                             <label>Upload your photo</label>
-                            <div style="display:flex; gap:8px; margin-bottom:8px;">
-                                <label class="file-label" for="matchGallery{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.8rem;">🖼 Gallery</label>
-                                <label class="file-label" for="matchCamera{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.8rem;">📷 Camera</label>
+                            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                <label class="file-label" for="matchGallery{{ item.id }}" style="flex:1;margin:0;padding:10px;font-size:.8rem;">🖼 Gallery</label>
+                                <label class="file-label" for="matchCamera{{ item.id }}" style="flex:1;margin:0;padding:10px;font-size:.8rem;">📷 Camera</label>
                             </div>
-                            <input type="file" name="match_photo" id="matchGallery{{ item.id }}" accept="image/*" onchange="previewMatchImage(this, {{ item.id }})" style="display:none;">
-                            <input type="file" id="matchCamera{{ item.id }}" accept="image/*" capture="environment" onchange="syncMatchCamera(this, {{ item.id }})" style="display:none;">
-                            <img id="matchPreview{{ item.id }}" alt="Preview" style="width:100%; margin-top:8px; display:none; border-radius:var(--radius); border:1px solid var(--border2);">
+                            <input type="file" name="match_photo" id="matchGallery{{ item.id }}" accept="image/*" onchange="previewMatchImage(this,{{ item.id }})" style="display:none;">
+                            <input type="file" id="matchCamera{{ item.id }}" accept="image/*" capture="environment" onchange="syncMatchCamera(this,{{ item.id }})" style="display:none;">
+                            <img id="matchPreview{{ item.id }}" alt="Preview" style="width:100%;margin-top:8px;display:none;border-radius:var(--radius);border:1px solid var(--border2);">
                         </div>
                         <button type="submit" class="btn btn-primary" style="width:100%;">Submit for Admin Review</button>
                     </form>
@@ -422,17 +237,14 @@
 
     {% if not items %}
     <div class="empty">
-        <div class="empty-icon">🔍</div>
+        <div style="font-size:2.5rem;margin-bottom:16px;opacity:.3;">🔍</div>
         <h3>No active items</h3>
         <p>Everything is exactly where it should be.</p>
     </div>
     {% endif %}
 </div>
 
-<div id="noResults">
-    <h3>No results found</h3>
-    <p>Try different search terms or filters.</p>
-</div>
+<div id="noResults"><h3>No results found</h3><p>Try different search terms or filters.</p></div>
 
 <!-- Upload Modal -->
 <div class="modal-overlay" id="uploadModal">
@@ -444,24 +256,15 @@
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <div class="modal-body">
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Item Name</label>
-                        <input type="text" name="name" placeholder="e.g. AirPods" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Found Location</label>
-                        <input type="text" name="location" placeholder="e.g. Cafe 2F" required>
-                    </div>
+                    <div class="form-group"><label>Item Name</label><input type="text" name="name" placeholder="e.g. AirPods" required></div>
+                    <div class="form-group"><label>Found Location</label><input type="text" name="location" placeholder="e.g. Cafe 2F" required></div>
                 </div>
-                <div class="form-group">
-                    <label>Brief Description</label>
-                    <input type="text" name="description" placeholder="Colour, brand, any details…">
-                </div>
+                <div class="form-group"><label>Brief Description</label><input type="text" name="description" placeholder="Colour, brand, any details…"></div>
                 <div class="form-group">
                     <label>Photo</label>
-                    <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <label class="file-label" for="photoInput" style="flex:1; margin:0;">🖼 Gallery</label>
-                        <label class="file-label" for="cameraInput" style="flex:1; margin:0;">📷 Camera</label>
+                    <div style="display:flex;gap:8px;margin-bottom:8px;">
+                        <label class="file-label" for="photoInput" style="flex:1;margin:0;">🖼 Gallery</label>
+                        <label class="file-label" for="cameraInput" style="flex:1;margin:0;">📷 Camera</label>
                     </div>
                     <input type="file" name="photo" id="photoInput" accept="image/*" onchange="previewImage(this)" style="display:none;">
                     <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="syncCamera(this)" style="display:none;">
@@ -473,23 +276,18 @@
                         <option value="Generic">Standard Item</option>
                         <option value="Electronics">Electronics (Phone, Laptop…)</option>
                     </select>
-                    <div class="form-hint" id="electronicsNote" style="display:none; color: var(--accent);">
-                        📷 Photo will be blurred so only the real owner can identify it.
-                    </div>
+                    <div class="form-hint" id="electronicsNote" style="display:none;color:var(--accent);">📷 Photo will be blurred so only the real owner can identify it.</div>
                 </div>
                 <div class="form-group">
                     <label>Verification Question</label>
-                    <input type="text" name="secret_question" id="secretQuestionInput"
-                           placeholder="e.g. What photo is on your ID card?" required>
+                    <input type="text" name="secret_question" id="secretQuestionInput" placeholder="e.g. What photo is on your ID card?" required>
                     <div class="form-hint" id="secretQuestionHint">Ask something only the real owner would know.</div>
                 </div>
                 <div class="form-group">
                     <label>Expected Answer</label>
                     <input type="text" name="secret_answer" placeholder="e.g. A sunset" required>
                 </div>
-                <div class="form-group">
-                    <div class="form-hint" style="color: var(--accent);">🔒 Your contact is only shared after the owner passes verification.</div>
-                </div>
+                <div class="form-hint" style="color:var(--accent);">🔒 Your contact is only shared after the owner passes verification.</div>
             </div>
             <div class="modal-foot">
                 <button type="button" class="btn btn-ghost" onclick="closeModal('uploadModal')">Cancel</button>
@@ -502,132 +300,59 @@
 
 {% block scripts %}
 <script>
-    fetch('/api/stats').then(r => r.json()).then(d => {
-        document.getElementById('activeCount').textContent = d.active;
-        document.getElementById('claimedCount').textContent = d.claimed;
+    fetch('/api/stats').then(r=>r.json()).then(d=>{
+        document.getElementById('activeCount').textContent=d.active;
+        document.getElementById('claimedCount').textContent=d.claimed;
     });
 
-    function previewImage(input) {
-        const img = document.getElementById('imagePreview');
-        if (input.files && input.files[0]) {
-            img.src = URL.createObjectURL(input.files[0]);
-            img.style.display = 'block';
-        }
+    function previewImage(input){const img=document.getElementById('imagePreview');if(input.files&&input.files[0]){img.src=URL.createObjectURL(input.files[0]);img.style.display='block';}}
+    function syncCamera(input){if(input.files&&input.files[0]){const dt=new DataTransfer();dt.items.add(input.files[0]);document.getElementById('photoInput').files=dt.files;const img=document.getElementById('imagePreview');img.src=URL.createObjectURL(input.files[0]);img.style.display='block';}}
+    function previewMatchImage(input,id){const img=document.getElementById('matchPreview'+id);if(input.files&&input.files[0]){img.src=URL.createObjectURL(input.files[0]);img.style.display='block';}}
+    function syncMatchCamera(input,id){if(input.files&&input.files[0]){const dt=new DataTransfer();dt.items.add(input.files[0]);document.getElementById('matchGallery'+id).files=dt.files;const img=document.getElementById('matchPreview'+id);img.src=URL.createObjectURL(input.files[0]);img.style.display='block';}}
+
+    function toggleQuestionHint(){
+        const v=document.getElementById('categorySelect').value;
+        const i=document.getElementById('secretQuestionInput'),h=document.getElementById('secretQuestionHint'),n=document.getElementById('electronicsNote');
+        if(v==='Electronics'){i.placeholder="e.g. What's the wallpaper? What colour is the case?";h.textContent="Photo will be blurred — ask something only the real owner knows.";n.style.display='block';}
+        else{i.placeholder="e.g. What photo is on your ID card?";h.textContent="Ask something only the real owner would know.";n.style.display='none';}
     }
 
-    function syncCamera(input) {
-        if (input.files && input.files[0]) {
-            const dt = new DataTransfer();
-            dt.items.add(input.files[0]);
-            document.getElementById('photoInput').files = dt.files;
-            const img = document.getElementById('imagePreview');
-            img.src = URL.createObjectURL(input.files[0]);
-            img.style.display = 'block';
-        }
-    }
+    const searchInput=document.getElementById('liveSearch');
+    const filterBtns=document.querySelectorAll('.filters button');
+    let currentFilter='all';
+    searchInput.addEventListener('input',applyFilters);
+    filterBtns.forEach(btn=>{btn.addEventListener('click',()=>{filterBtns.forEach(b=>b.classList.remove('active'));btn.classList.add('active');currentFilter=btn.dataset.filter;applyFilters();});});
 
-    function previewMatchImage(input, itemId) {
-        const img = document.getElementById('matchPreview' + itemId);
-        if (input.files && input.files[0]) {
-            img.src = URL.createObjectURL(input.files[0]);
-            img.style.display = 'block';
-        }
-    }
-
-    function syncMatchCamera(input, itemId) {
-        if (input.files && input.files[0]) {
-            const dt = new DataTransfer();
-            dt.items.add(input.files[0]);
-            document.getElementById('matchGallery' + itemId).files = dt.files;
-            const img = document.getElementById('matchPreview' + itemId);
-            img.src = URL.createObjectURL(input.files[0]);
-            img.style.display = 'block';
-        }
-    }
-
-    function toggleQuestionHint() {
-        const val   = document.getElementById('categorySelect').value;
-        const input = document.getElementById('secretQuestionInput');
-        const hint  = document.getElementById('secretQuestionHint');
-        const note  = document.getElementById('electronicsNote');
-        if (val === 'Electronics') {
-            input.placeholder = "e.g. What's the wallpaper? What colour is the case?";
-            hint.textContent  = "Photo will be blurred — ask something only the real owner knows.";
-            note.style.display = 'block';
-        } else {
-            input.placeholder = "e.g. What photo is on your ID card?";
-            hint.textContent  = "Ask something only the real owner would know.";
-            note.style.display = 'none';
-        }
-    }
-
-    const searchInput = document.getElementById('liveSearch');
-    const filterBtns  = document.querySelectorAll('.filters button');
-    let currentFilter = 'all';
-
-    searchInput.addEventListener('input', applyFilters);
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
-            applyFilters();
+    function applyFilters(){
+        const q=searchInput.value.toLowerCase();
+        const cards=document.querySelectorAll('.item-entry');
+        let visible=0;
+        cards.forEach(card=>{
+            const ok=(currentFilter==='all'||card.dataset.category===currentFilter)&&(!q||card.dataset.name.includes(q)||card.dataset.location.includes(q));
+            card.style.display=ok?'':'none'; if(ok)visible++;
         });
-    });
-
-    function applyFilters() {
-        const q = searchInput.value.toLowerCase();
-        const cards = document.querySelectorAll('.item-entry');
-        let visible = 0;
-        cards.forEach(card => {
-            const matchCat = currentFilter === 'all' || card.dataset.category === currentFilter;
-            const matchQ   = !q || card.dataset.name.includes(q) || card.dataset.location.includes(q);
-            card.style.display = (matchCat && matchQ) ? '' : 'none';
-            if (matchCat && matchQ) visible++;
-        });
-        document.getElementById('noResults').style.display =
-            visible === 0 && document.querySelectorAll('.item-entry').length > 0 ? 'block' : 'none';
+        document.getElementById('noResults').style.display=visible===0&&document.querySelectorAll('.item-entry').length>0?'block':'none';
     }
 
-    async function handleVerify(e, itemId) {
+    async function handleVerify(e,itemId){
         e.preventDefault();
-        const form     = e.target;
-        const answer   = form.answer.value;
-        const resultEl = document.getElementById('result-' + itemId);
-
-        const res  = await fetch('/verify/' + itemId, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-            body: 'answer=' + encodeURIComponent(answer)
-        });
-        const data = await res.json();
-
-        resultEl.textContent   = data.message;
-        resultEl.className     = 'alert ' + (data.success ? 'alert-success' : 'alert-danger');
-        resultEl.style.display = 'block';
-
-        if (data.success) setTimeout(() => location.reload(), 2500);
+        const answer=e.target.answer.value;
+        const resultEl=document.getElementById('result-'+itemId);
+        const res=await fetch('/verify/'+itemId,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},body:'answer='+encodeURIComponent(answer)});
+        const data=await res.json();
+        resultEl.textContent=data.message;
+        resultEl.className='alert '+(data.success?'alert-success':'alert-danger');
+        resultEl.style.display='block';
+        if(data.success)setTimeout(()=>location.reload(),2500);
     }
 
-    async function handlePhotoMatch(e, itemId) {
+    async function handlePhotoMatch(e,itemId){
         e.preventDefault();
-        const form     = e.target;
-        const resultEl = document.getElementById('match-result-' + itemId);
-        const formData = new FormData(form);
-
-        resultEl.textContent   = 'Uploading photo…';
-        resultEl.className     = 'alert alert-success';
-        resultEl.style.display = 'block';
-
-        const res  = await fetch('/photo-match/' + itemId, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
-        });
-        const data = await res.json();
-
-        resultEl.textContent = data.message;
-        resultEl.className   = 'alert ' + (data.success ? 'alert-success' : 'alert-danger');
+        const resultEl=document.getElementById('match-result-'+itemId);
+        resultEl.textContent='Uploading photo…';resultEl.className='alert alert-success';resultEl.style.display='block';
+        const res=await fetch('/photo-match/'+itemId,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new FormData(e.target)});
+        const data=await res.json();
+        resultEl.textContent=data.message;resultEl.className='alert '+(data.success?'alert-success':'alert-danger');
     }
 </script>
 {% endblock %}

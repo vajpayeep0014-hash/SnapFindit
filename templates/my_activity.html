@@ -3,160 +3,60 @@
 
 {% block content %}
 <style>
-    .activity-hero {
-        text-align: center;
-        padding: 56px 24px 36px;
-        position: relative;
-    }
-    .activity-hero::before {
-        content: '';
-        position: absolute;
-        top: -40px; left: 50%;
-        transform: translateX(-50%);
-        width: 500px; height: 200px;
-        background: radial-gradient(ellipse at center, rgba(232,201,126,0.06) 0%, transparent 70%);
-        pointer-events: none;
-    }
-    .activity-hero h1 {
-        font-family: var(--font-head);
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 8px;
-        letter-spacing: -0.3px;
-    }
-    .activity-hero p { color: var(--muted); font-size: 0.92rem; font-weight: 300; }
+    .act-hero { text-align:center; padding:60px 24px 40px; position:relative; z-index:1; }
+    .act-hero h1 { font-family:var(--font-head); font-size:2.2rem; font-weight:800; margin-bottom:8px; letter-spacing:-.3px; }
+    .act-hero p { color:var(--muted); font-size:.92rem; font-weight:300; }
 
-    .summary-bar {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 24px;
-        flex-wrap: wrap;
+    .summary-bar { display:flex; justify-content:center; gap:10px; margin-top:24px; flex-wrap:wrap; }
+    .sum-card {
+        background:rgba(255,255,255,.03); backdrop-filter:blur(16px);
+        border:1px solid var(--border2); border-radius:var(--radius-lg);
+        padding:16px 28px; text-align:center; min-width:100px;
+        transition:border-color .2s;
     }
-    .summary-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 16px 28px;
-        text-align: center;
-        min-width: 100px;
-    }
-    .summary-card strong {
-        font-family: var(--font-head);
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: var(--accent);
-        display: block;
-        line-height: 1;
-        margin-bottom: 5px;
-    }
-    .summary-card span { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+    .sum-card:hover { border-color:rgba(0,212,255,.25); }
+    .sum-card strong { font-family:var(--font-head); font-size:1.9rem; font-weight:800; color:var(--accent); display:block; line-height:1; margin-bottom:5px; text-shadow:0 0 24px var(--accent-glow); }
+    .sum-card span { font-size:.71rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:500; }
 
-    .tabs-wrap { max-width: 820px; margin: 0 auto; padding: 0 24px 60px; }
-
-    .tabs {
-        display: flex;
-        gap: 0;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 28px;
-    }
-    .tab-btn {
-        padding: 12px 24px;
-        background: none;
-        border: none;
-        font-family: var(--font-body);
-        font-size: 0.88rem;
-        font-weight: 500;
-        color: var(--muted);
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -1px;
-        transition: color 0.2s;
-        letter-spacing: 0.1px;
-    }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-btn:hover:not(.active) { color: var(--text); }
-
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .tabs-wrap { max-width:820px; margin:0 auto; padding:0 24px 60px; position:relative; z-index:1; }
+    .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:24px; }
+    .tab-btn { padding:12px 24px; background:none; border:none; font-family:var(--font-body); font-size:.86rem; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s; }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-btn:hover:not(.active) { color:var(--text); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
 
     .item-row {
-        background: var(--bg2);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        display: flex;
-        margin-bottom: 12px;
-        overflow: hidden;
-        transition: border-color 0.2s, transform 0.2s;
+        background:rgba(255,255,255,.025); backdrop-filter:blur(16px);
+        border:1px solid var(--border); border-radius:var(--radius-lg);
+        display:flex; margin-bottom:12px; overflow:hidden;
+        transition:border-color .2s, transform .2s;
     }
-    .item-row:hover { border-color: var(--border2); transform: translateX(2px); }
+    .item-row:hover { border-color:rgba(0,212,255,.2); transform:translateX(3px); }
+    .item-row img { width:94px; min-width:94px; height:94px; object-fit:cover; display:block; border-right:1px solid var(--border); }
+    .item-row-body { padding:14px 18px; flex:1; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .item-row-info { flex:1; min-width:100px; }
+    .item-row-name { font-family:var(--font-head); font-weight:700; font-size:.95rem; margin-bottom:4px; }
+    .item-row-loc { font-size:.79rem; color:var(--muted); margin-bottom:3px; }
+    .item-row-date { font-size:.73rem; color:var(--faint); }
+    .item-row-status { text-align:right; flex-shrink:0; }
+    .sbadge { display:inline-block; padding:4px 12px; font-size:.7rem; font-weight:600; letter-spacing:.5px; border-radius:40px; text-transform:uppercase; }
+    .sbadge-active { background:var(--surface); border:1px solid var(--border2); color:var(--muted); }
+    .sbadge-claimed { background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.2); color:var(--success); }
+    .contact-reveal { font-size:.77rem; color:var(--success); margin-top:6px; }
 
-    .item-row img {
-        width: 96px;
-        min-width: 96px;
-        height: 96px;
-        object-fit: cover;
-        display: block;
-        border-right: 1px solid var(--border);
-    }
-    .item-row-body {
-        padding: 14px 18px;
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-    .item-row-info { flex: 1; min-width: 120px; }
-    .item-row-name {
-        font-family: var(--font-head);
-        font-weight: 700;
-        font-size: 0.95rem;
-        margin-bottom: 4px;
-        color: var(--text);
-    }
-    .item-row-loc  { font-size: 0.8rem; color: var(--muted); margin-bottom: 3px; }
-    .item-row-date { font-size: 0.74rem; color: var(--faint); }
-    .item-row-status { text-align: right; flex-shrink: 0; }
-
-    .status-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        font-size: 0.72rem;
-        font-family: var(--font-body);
-        font-weight: 600;
-        letter-spacing: 0.4px;
-        border-radius: 40px;
-        text-transform: uppercase;
-    }
-    .status-active  { background: var(--surface); border: 1px solid var(--border2); color: var(--muted); }
-    .status-claimed { background: rgba(95,184,138,0.12); border: 1px solid rgba(95,184,138,0.25); color: var(--success); }
-
-    .contact-reveal { font-size: 0.78rem; color: var(--success); margin-top: 6px; opacity: 0.9; }
-
-    .empty-tab { text-align: center; padding: 60px 24px; color: var(--muted); }
-    .empty-tab-icon { font-size: 2rem; margin-bottom: 14px; opacity: 0.3; }
-    .empty-tab h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .empty-tab a { color: var(--accent); text-decoration: none; }
-    .empty-tab a:hover { text-decoration: underline; }
+    .empty-tab { text-align:center; padding:60px 24px; color:var(--muted); }
+    .empty-tab h3 { font-family:var(--font-head); font-weight:700; color:var(--text); margin-bottom:6px; }
+    .empty-tab a { color:var(--accent); text-decoration:none; }
 </style>
 
-<div class="activity-hero">
+<div class="act-hero">
     <h1>My Activity</h1>
     <p>Items you've claimed and reported on campus.</p>
     <div class="summary-bar">
-        <div class="summary-card">
-            <strong>{{ claimed_items|length }}</strong>
-            <span>Claimed</span>
-        </div>
-        <div class="summary-card">
-            <strong>{{ reported_items|length }}</strong>
-            <span>Reported</span>
-        </div>
-        <div class="summary-card">
-            <strong>{{ reported_items|selectattr('claimed')|list|length }}</strong>
-            <span>Resolved</span>
-        </div>
+        <div class="sum-card"><strong>{{ claimed_items|length }}</strong><span>Claimed</span></div>
+        <div class="sum-card"><strong>{{ reported_items|length }}</strong><span>Reported</span></div>
+        <div class="sum-card"><strong>{{ reported_items|selectattr('claimed')|list|length }}</strong><span>Resolved</span></div>
     </div>
 </div>
 
@@ -167,8 +67,7 @@
     </div>
 
     <div class="tab-panel active" id="tab-claimed">
-        {% if claimed_items %}
-        {% for item in claimed_items %}
+        {% if claimed_items %}{% for item in claimed_items %}
         <div class="item-row">
             <img src="{{ item.image_file }}" alt="{{ item.name }}">
             <div class="item-row-body">
@@ -178,7 +77,7 @@
                     <div class="item-row-date">Claimed {{ item.claimed_at.strftime('%d %b %Y') if item.claimed_at else '—' }}</div>
                 </div>
                 <div class="item-row-status">
-                    <span class="status-badge status-claimed">✓ Claimed</span>
+                    <span class="sbadge sbadge-claimed">✓ Claimed</span>
                     {% if item.reporter %}
                     <div class="contact-reveal">📧 {{ item.reporter.email }}</div>
                     <div class="contact-reveal">📞 {{ item.reporter.phone if item.reporter.phone else 'Not provided' }}</div>
@@ -186,19 +85,13 @@
                 </div>
             </div>
         </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-tab">
-            <div class="empty-tab-icon">🎒</div>
-            <h3>No claimed items yet</h3>
-            <p><a href="{{ url_for('index') }}">Browse listings</a> to find your lost item.</p>
-        </div>
+        {% endfor %}{% else %}
+        <div class="empty-tab"><div style="font-size:2rem;margin-bottom:14px;opacity:.3;">🎒</div><h3>No claimed items yet</h3><p><a href="{{ url_for('index') }}">Browse listings</a> to find your lost item.</p></div>
         {% endif %}
     </div>
 
     <div class="tab-panel" id="tab-reported">
-        {% if reported_items %}
-        {% for item in reported_items %}
+        {% if reported_items %}{% for item in reported_items %}
         <div class="item-row">
             <img src="{{ item.image_file }}" alt="{{ item.name }}">
             <div class="item-row-body">
@@ -208,33 +101,19 @@
                     <div class="item-row-date">Reported {{ item.created_at.strftime('%d %b %Y') }}</div>
                 </div>
                 <div class="item-row-status">
-                    {% if item.claimed %}
-                    <span class="status-badge status-claimed">✓ Returned</span>
-                    {% else %}
-                    <span class="status-badge status-active">Waiting</span>
-                    {% endif %}
+                    {% if item.claimed %}<span class="sbadge sbadge-claimed">✓ Returned</span>
+                    {% else %}<span class="sbadge sbadge-active">Waiting</span>{% endif %}
                 </div>
             </div>
         </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-tab">
-            <div class="empty-tab-icon">📦</div>
-            <h3>No items reported yet</h3>
-            <p>Found something? <a href="{{ url_for('index') }}">Report it</a> and help someone out.</p>
-        </div>
+        {% endfor %}{% else %}
+        <div class="empty-tab"><div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📦</div><h3>No items reported yet</h3><p>Found something? <a href="{{ url_for('index') }}">Report it</a> and help someone out.</p></div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
-    function switchTab(e, name) {
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + name).classList.add('active');
-        e.target.classList.add('active');
-    }
+function switchTab(e,name){document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');e.target.classList.add('active');}
 </script>
 {% endblock %}
