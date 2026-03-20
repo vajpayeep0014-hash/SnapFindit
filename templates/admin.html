@@ -3,67 +3,173 @@
 
 {% block content %}
 <style>
-    header { text-align: center; padding: 40px 24px 28px; }
-    header h1 { font-size: 2rem; margin-bottom: 6px; }
-    header p  { color: #666; font-size: 0.95rem; }
+    .admin-hero {
+        padding: 48px 28px 28px;
+        max-width: 1040px;
+        margin: 0 auto;
+    }
+    .admin-hero h1 {
+        font-family: var(--font-head);
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+        letter-spacing: -0.3px;
+    }
+    .admin-hero p { color: var(--muted); font-size: 0.85rem; }
 
-    .kpi-bar { display: flex; justify-content: center; gap: 32px; margin-top: 18px; font-size: 0.9rem; color: #555; }
-    .kpi-bar strong { font-size: 1.4rem; display: block; color: #222; }
+    .kpi-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 22px;
+    }
+    .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 16px 22px;
+        min-width: 110px;
+        flex: 1;
+    }
+    .kpi-card strong {
+        font-family: var(--font-head);
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--accent);
+        display: block;
+        margin-bottom: 3px;
+    }
+    .kpi-card span { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
 
-    .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 60px; }
+    .admin-wrap { max-width: 1040px; margin: 0 auto; padding: 0 28px 60px; }
 
-    .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 24px; }
-    .tab-btn { padding: 10px 22px; background: none; border: none; font-family: Georgia, serif; font-size: 0.9rem; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; position: relative; }
-    .tab-btn.active { color: #222; border-bottom-color: #222; }
-    .tab-btn:hover:not(.active) { color: #555; }
+    /* Tabs */
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; gap: 0; }
+    .tab-btn {
+        padding: 11px 22px;
+        background: none;
+        border: none;
+        font-family: var(--font-body);
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: color 0.2s;
+        white-space: nowrap;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    .badge-count { display: inline-block; background: #c0392b; color: #fff; font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; margin-left: 6px; font-family: Georgia, serif; }
+    .badge-count {
+        display: inline-block;
+        background: var(--danger);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 40px;
+        margin-left: 6px;
+    }
 
-    .search-bar { width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid #ccc; font-family: Georgia, serif; font-size: 0.88rem; margin-bottom: 14px; background: #fff; }
-    .search-bar:focus { outline: none; border-color: #222; }
+    /* Search bar */
+    .search-bar {
+        width: 100%;
+        max-width: 320px;
+        padding: 9px 14px;
+        border: 1px solid var(--border2);
+        border-radius: var(--radius);
+        font-family: var(--font-body);
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        background: var(--surface);
+        color: var(--text);
+        transition: border-color 0.2s;
+    }
+    .search-bar::placeholder { color: var(--faint); }
+    .search-bar:focus { outline: none; border-color: var(--accent); background: var(--surface2); }
 
-    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #ddd; font-size: 0.875rem; }
-    th { background: #f5f5f0; padding: 10px 14px; text-align: left; font-size: 0.78rem; color: #888; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #ddd; font-weight: normal; }
-    td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; background: var(--bg2); font-size: 0.84rem; }
+    th {
+        background: var(--surface);
+        padding: 11px 16px;
+        text-align: left;
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fafafa; }
+    tr:hover td { background: var(--surface); }
 
-    .thumb { width: 44px; height: 44px; object-fit: cover; border: 1px solid #ddd; display: block; }
-    .thumb-lg { width: 80px; height: 80px; object-fit: cover; border: 1px solid #ddd; display: block; }
+    .thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+    .thumb-lg { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
 
+    /* Action buttons */
     .action-form { display: inline; }
-    .action-btn { padding: 4px 10px; border: 1px solid #ddd; background: #fff; font-family: Georgia, serif; font-size: 0.78rem; cursor: pointer; }
-    .action-btn:hover { background: #222; color: #fff; border-color: #222; }
-    .action-btn-danger:hover { background: #c0392b; border-color: #c0392b; }
-    .action-btn-success { border-color: #155724; color: #155724; }
-    .action-btn-success:hover { background: #155724; color: #fff; border-color: #155724; }
+    .action-btn {
+        padding: 5px 12px;
+        border: 1px solid var(--border2);
+        background: transparent;
+        color: var(--muted);
+        font-family: var(--font-body);
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.18s;
+        white-space: nowrap;
+    }
+    .action-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .action-btn-danger { border-color: rgba(224,107,107,0.3); color: var(--danger); }
+    .action-btn-danger:hover { background: rgba(224,107,107,0.12); border-color: rgba(224,107,107,0.5); }
+    .action-btn-success { border-color: rgba(95,184,138,0.3); color: var(--success); }
+    .action-btn-success:hover { background: rgba(95,184,138,0.12); border-color: rgba(95,184,138,0.5); }
 
-    .badge-claimed { font-size: 0.78rem; color: #155724; }
-    .badge-active  { font-size: 0.78rem; color: #888; }
-    .badge-admin   { font-size: 0.78rem; font-weight: bold; color: #222; }
+    /* Badges */
+    .badge-claimed { font-size: 0.72rem; color: var(--success); font-weight: 600; }
+    .badge-active  { font-size: 0.72rem; color: var(--muted); }
+    .badge-admin   { font-size: 0.72rem; font-weight: 700; color: var(--accent); }
 
-    .conflict-row { background: #fffbf0; }
-    .conflict-images { display: flex; gap: 8px; align-items: center; }
-    .conflict-images span { font-size: 0.75rem; color: #888; display: block; text-align: center; margin-top: 4px; }
-    .vs-badge { font-size: 0.8rem; color: #888; font-style: italic; }
+    /* Conflict row */
+    .conflict-row td { background: rgba(232,201,126,0.04); }
+    .conflict-row:hover td { background: rgba(232,201,126,0.08) !important; }
 
-    .contact-info { font-size: 0.8rem; }
-    .contact-info div { margin-bottom: 3px; }
+    .contact-info { font-size: 0.78rem; color: var(--muted); line-height: 1.7; }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+        color: var(--muted);
+    }
+    .empty-state h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 6px; }
 </style>
 
-<header>
+<div class="admin-hero">
     <h1>Admin Panel</h1>
     <p>Logged in as {{ user.email }}</p>
-    <div class="kpi-bar">
-        <div><strong>{{ active }}</strong> Active</div>
-        <div><strong>{{ claimed }}</strong> Returned</div>
-        <div><strong>{{ user_count }}</strong> Users</div>
-        <div><strong>{{ conflict_count }}</strong> Conflicts</div>
-        <div><strong>{{ active + claimed }}</strong> Total Reports</div>
+    <div class="kpi-row">
+        <div class="kpi-card"><strong>{{ active }}</strong><span>Active</span></div>
+        <div class="kpi-card"><strong>{{ claimed }}</strong><span>Returned</span></div>
+        <div class="kpi-card"><strong>{{ user_count }}</strong><span>Users</span></div>
+        <div class="kpi-card"><strong>{{ conflict_count }}</strong><span>Conflicts</span></div>
+        <div class="kpi-card"><strong>{{ active + claimed }}</strong><span>Total</span></div>
     </div>
-</header>
+</div>
 
 <div class="admin-wrap">
     <div class="tabs">
@@ -71,51 +177,62 @@
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'conflicts')">
             Conflicts
-            {% if conflict_count > 0 %}
-            <span class="badge-count">{{ conflict_count }}</span>
-            {% endif %}
+            {% if conflict_count > 0 %}<span class="badge-count">{{ conflict_count }}</span>{% endif %}
         </button>
     </div>
 
-    <!-- Items -->
+    <!-- Items tab -->
     <div class="tab-panel active" id="tab-items">
         <input class="search-bar" type="text" placeholder="Search items…" oninput="filterTable(this,'itemsTable')">
-        <div style="overflow-x:auto;">
+        <div class="table-wrap">
         <table id="itemsTable">
             <thead>
                 <tr>
-                    <th>Photo</th><th>Item</th><th>Location</th><th>Category</th>
-                    <th>Verification Q &amp; A</th>
-                    <th>Reporter</th><th>Date</th><th>Status</th><th>Actions</th>
+                    <th>Photo</th>
+                    <th>Item</th>
+                    <th>Location</th>
+                    <th>Category</th>
+                    <th>Q &amp; A</th>
+                    <th>Reporter</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
             {% for item in items %}
             <tr class="trow" data-search="{{ item.name|lower }} {{ item.location|lower }}">
                 <td><img class="thumb" src="{{ item.image_file }}" alt="{{ item.name }}"></td>
-                <td><strong>{{ item.name }}</strong></td>
-                <td>{{ item.location }}</td>
-                <td>{{ item.category }}</td>
-                <td style="font-size:0.8rem; max-width:200px;">
+                <td><strong style="font-family: var(--font-head); font-weight: 700;">{{ item.name }}</strong></td>
+                <td style="color: var(--muted);">{{ item.location }}</td>
+                <td>
+                    <span style="font-size:0.7rem; padding:3px 10px; border-radius:40px; background:var(--surface); border:1px solid var(--border2); color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:0.5px;">
+                        {{ item.category }}
+                    </span>
+                </td>
+                <td style="font-size:0.78rem; max-width:180px;">
                     {% if item.secret_question %}
-                    <span style="color:#555;">Q: {{ item.secret_question }}</span><br>
-                    <span style="color:#222; font-weight:bold;">A: {{ item.secret_answer }}</span>
+                    <span style="color:var(--muted);">Q: {{ item.secret_question }}</span><br>
+                    <span style="color:var(--accent); font-weight:600;">A: {{ item.secret_answer }}</span>
                     {% else %}—{% endif %}
                 </td>
-                <td style="font-size:0.8rem;">{{ item.reporter.email if item.reporter else '—' }}</td>
-                <td style="font-size:0.8rem;">{{ item.created_at.strftime('%d %b %Y') }}</td>
+                <td style="font-size:0.78rem; color:var(--muted);">{{ item.reporter.email if item.reporter else '—' }}</td>
+                <td style="font-size:0.78rem; color:var(--muted);">{{ item.created_at.strftime('%d %b %Y') }}</td>
                 <td>
-                    {% if item.claimed %}<span class="badge-claimed">✓ Claimed</span>
-                    {% else %}<span class="badge-active">Active</span>{% endif %}
+                    {% if item.claimed %}
+                    <span class="badge-claimed">✓ Claimed</span>
+                    {% else %}
+                    <span class="badge-active">Active</span>
+                    {% endif %}
                 </td>
-                <td>
+                <td style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                     {% if item.claimed %}
                     <form class="action-form" method="POST" action="/admin/unclaim/{{ item.id }}" onsubmit="return confirm('Mark as unclaimed?')">
                         <button class="action-btn">↩ Unclaim</button>
                     </form>
                     {% endif %}
                     <form class="action-form" method="POST" action="/admin/delete/{{ item.id }}" onsubmit="return confirm('Delete permanently?')">
-                        <button class="action-btn action-btn-danger" style="margin-left:4px;">Delete</button>
+                        <button class="action-btn action-btn-danger">Delete</button>
                     </form>
                 </td>
             </tr>
@@ -125,34 +242,40 @@
         </div>
     </div>
 
-    <!-- Users -->
+    <!-- Users tab -->
     <div class="tab-panel" id="tab-users">
         <input class="search-bar" type="text" placeholder="Search users…" oninput="filterTable(this,'usersTable')">
-        <div style="overflow-x:auto;">
+        <div class="table-wrap">
         <table id="usersTable">
             <thead>
                 <tr>
-                    <th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th>
-                    <th>Reported</th><th>Claimed</th><th>Actions</th>
+                    <th>Name</th><th>Email</th><th>Phone</th><th>Role</th>
+                    <th>Joined</th><th>Reported</th><th>Claimed</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
             {% for u in users %}
             <tr class="trow" data-search="{{ u.name|lower }} {{ u.email|lower }}">
-                <td><strong>{{ u.name }}</strong></td>
-                <td style="font-size:0.82rem;">{{ u.email }}</td>
-                <td style="font-size:0.82rem;">{{ u.phone or '—' }}</td>
-                <td>{% if u.is_admin %}<span class="badge-admin">Admin</span>{% else %}Student{% endif %}</td>
-                <td style="font-size:0.8rem;">{{ u.created_at.strftime('%d %b %Y') }}</td>
-                <td style="text-align:center;">{{ u.items_posted|length }}</td>
-                <td style="text-align:center;">{{ u.claims|length }}</td>
+                <td><strong style="font-family: var(--font-head); font-weight: 700;">{{ u.name }}</strong></td>
+                <td style="font-size:0.8rem; color:var(--muted);">{{ u.email }}</td>
+                <td style="font-size:0.8rem; color:var(--muted);">{{ u.phone or '—' }}</td>
+                <td>
+                    {% if u.is_admin %}
+                    <span class="badge-admin">Admin</span>
+                    {% else %}
+                    <span style="font-size:0.78rem; color:var(--muted);">Student</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:0.78rem; color:var(--muted);">{{ u.created_at.strftime('%d %b %Y') }}</td>
+                <td style="text-align:center; font-weight:600; color:var(--text);">{{ u.items_posted|length }}</td>
+                <td style="text-align:center; font-weight:600; color:var(--text);">{{ u.claims|length }}</td>
                 <td>
                     {% if u.email != user.email %}
                     <form class="action-form" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')">
                         <button class="action-btn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button>
                     </form>
                     {% else %}
-                    <span style="font-size:0.78rem;color:#aaa;">You</span>
+                    <span style="font-size:0.75rem;color:var(--faint);">You</span>
                     {% endif %}
                 </td>
             </tr>
@@ -162,16 +285,16 @@
         </div>
     </div>
 
-    <!-- Conflicts -->
+    <!-- Conflicts tab -->
     <div class="tab-panel" id="tab-conflicts">
         {% if conflicts %}
-        <div style="overflow-x:auto;">
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
                     <th>Item Photo</th>
                     <th>Item</th>
-                    <th>Claimant's Photo</th>
+                    <th>Claimant Photo</th>
                     <th>Finder Contact</th>
                     <th>Claimant Contact</th>
                     <th>Date</th>
@@ -183,15 +306,13 @@
             <tr class="conflict-row">
                 <td>
                     <img class="thumb-lg" src="{{ conflict.item.image_file }}" alt="{{ conflict.item.name }}">
-                    <span style="font-size:0.78rem; color:#555; display:block; margin-top:4px;">{{ conflict.item.name }}</span>
+                    <span style="font-size:0.72rem; color:var(--muted); display:block; margin-top:5px;">{{ conflict.item.name }}</span>
                 </td>
                 <td>
-                    <strong>{{ conflict.item.name }}</strong><br>
-                    <span style="font-size:0.8rem; color:#666;">📍 {{ conflict.item.location }}</span>
+                    <strong style="font-family:var(--font-head); font-weight:700;">{{ conflict.item.name }}</strong><br>
+                    <span style="font-size:0.78rem; color:var(--muted);">📍 {{ conflict.item.location }}</span>
                 </td>
-                <td>
-                    <img class="thumb-lg" src="{{ conflict.uploaded_image }}" alt="Claimant photo">
-                </td>
+                <td><img class="thumb-lg" src="{{ conflict.uploaded_image }}" alt="Claimant photo"></td>
                 <td>
                     <div class="contact-info">
                         {% if conflict.item.reporter %}
@@ -206,14 +327,16 @@
                         <div>📞 {{ conflict.claimant.phone or 'Not provided' }}</div>
                     </div>
                 </td>
-                <td style="font-size:0.8rem;">{{ conflict.created_at.strftime('%d %b %Y') }}</td>
+                <td style="font-size:0.78rem; color:var(--muted);">{{ conflict.created_at.strftime('%d %b %Y') }}</td>
                 <td>
-                    <form class="action-form" method="POST" action="/admin/conflict/confirm/{{ conflict.id }}" onsubmit="return confirm('Confirm this match? Item will be marked as claimed.')">
-                        <button class="action-btn action-btn-success">✓ Confirm</button>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                    <form class="action-form" method="POST" action="/admin/conflict/confirm/{{ conflict.id }}" onsubmit="return confirm('Confirm this match?')">
+                        <button class="action-btn action-btn-success" style="width:100%;">✓ Confirm</button>
                     </form>
-                    <form class="action-form" method="POST" action="/admin/conflict/reject/{{ conflict.id }}" onsubmit="return confirm('Reject this request?')" style="margin-top:4px;">
-                        <button class="action-btn action-btn-danger">✗ Reject</button>
+                    <form class="action-form" method="POST" action="/admin/conflict/reject/{{ conflict.id }}" onsubmit="return confirm('Reject this request?')">
+                        <button class="action-btn action-btn-danger" style="width:100%;">✗ Reject</button>
                     </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -221,8 +344,8 @@
         </table>
         </div>
         {% else %}
-        <div style="text-align:center; padding:48px 24px; color:#888;">
-            <h3 style="color:#222; margin-bottom:6px;">No pending conflicts</h3>
+        <div class="empty-state">
+            <h3>No pending conflicts</h3>
             <p>Photo match requests will appear here.</p>
         </div>
         {% endif %}

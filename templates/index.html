@@ -1,133 +1,375 @@
 {% extends "base.html" %}
-{% block title %}Campus Lost & Found{% endblock %}
+{% block title %}SnapFind — Campus Lost & Found{% endblock %}
 
 {% block content %}
 <style>
-    header { text-align: center; padding: 32px 16px 24px; }
-    header h1 { font-size: 1.8rem; margin-bottom: 8px; }
-    header p  { color: #666; font-size: 0.95rem; }
-
-    .stats { display: flex; justify-content: center; gap: 28px; margin-top: 16px; font-size: 0.9rem; color: #555; }
-    .stats strong { font-size: 1.3rem; display: block; color: #222; }
-
-    .tools { max-width: 720px; margin: 0 auto 24px; padding: 0 16px; }
-    .tools input[type="text"] {
-        width: 100%; padding: 10px 14px;
-        border: 1px solid #ccc; background: #fff;
-        font-size: 1rem; font-family: Georgia, serif; margin-bottom: 10px;
+    /* ── Hero ── */
+    .hero {
+        position: relative;
+        text-align: center;
+        padding: 64px 24px 48px;
+        overflow: hidden;
+        z-index: 1;
     }
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -60px; left: 50%;
+        transform: translateX(-50%);
+        width: 600px; height: 300px;
+        background: radial-gradient(ellipse at center, rgba(232,201,126,0.08) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .hero-eyebrow {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 16px;
+        font-family: var(--font-body);
+    }
+    .hero h1 {
+        font-family: var(--font-head);
+        font-size: clamp(2.2rem, 5vw, 3.4rem);
+        font-weight: 800;
+        color: var(--text);
+        line-height: 1.1;
+        letter-spacing: -0.5px;
+        margin-bottom: 14px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero-sub {
+        font-size: 0.95rem;
+        color: var(--muted);
+        font-weight: 300;
+        max-width: 420px;
+        margin: 0 auto 32px;
+        line-height: 1.65;
+    }
+
+    /* Stats pills */
+    .stats-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 0;
+    }
+    .stat-pill {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 40px;
+        padding: 8px 18px;
+        font-size: 0.82rem;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .stat-pill strong {
+        font-weight: 600;
+        font-family: var(--font-head);
+        color: var(--text);
+        font-size: 1rem;
+    }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0; }
+
+    /* ── Search & toolbar ── */
+    .tools {
+        max-width: 760px;
+        margin: 0 auto 28px;
+        padding: 0 20px;
+    }
+    .search-wrap {
+        position: relative;
+        margin-bottom: 12px;
+    }
+    .search-icon {
+        position: absolute;
+        left: 16px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 0.95rem;
+        pointer-events: none;
+    }
+    .tools input[type="text"] {
+        width: 100%;
+        padding: 13px 16px 13px 44px;
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        font-size: 0.95rem;
+        font-family: var(--font-body);
+        color: var(--text);
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .tools input[type="text"]::placeholder { color: var(--faint); }
+    .tools input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: var(--surface2);
+    }
+
     .toolbar-row {
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
     }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }
     .filters button {
-        padding: 6px 14px; border: 1px solid #ccc; background: #fff;
-        cursor: pointer; font-size: 0.85rem; font-family: Georgia, serif;
+        padding: 6px 16px;
+        border: 1px solid var(--border2);
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 500;
+        font-family: var(--font-body);
+        color: var(--muted);
+        border-radius: 40px;
+        transition: all 0.2s;
+        letter-spacing: 0.2px;
     }
-    .filters button.active { background: #222; color: #fff; border-color: #222; }
+    .filters button:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
+    .filters button.active {
+        background: var(--accent);
+        color: #0d0c09;
+        border-color: var(--accent);
+        font-weight: 600;
+    }
+
     .report-btn {
-        padding: 8px 16px; background: #222; color: #fff;
-        border: none; cursor: pointer; font-size: 0.85rem; font-family: Georgia, serif;
-        white-space: nowrap; flex-shrink: 0;
+        padding: 8px 18px;
+        background: var(--accent);
+        color: #0d0c09;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 600;
+        font-family: var(--font-body);
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, transform 0.15s;
+        letter-spacing: 0.2px;
     }
-    .report-btn:hover { background: #444; }
+    .report-btn:hover { background: var(--accent2); transform: translateY(-1px); }
 
     @media (max-width: 500px) {
         .toolbar-row { flex-direction: column; align-items: stretch; }
-        .report-btn { width: 100%; text-align: center; padding: 11px; font-size: 0.95rem; }
-        .filters { justify-content: flex-start; }
-        header h1 { font-size: 1.5rem; }
+        .report-btn { text-align: center; padding: 11px; }
     }
 
+    /* ── Grid ── */
     .grid {
-        max-width: 960px; margin: 0 auto; padding: 0 16px 48px;
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 20px 60px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 18px;
     }
-
     @media (max-width: 480px) {
         .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
         .card img { height: 140px; }
     }
-    @media (max-width: 340px) {
-        .grid { grid-template-columns: 1fr; }
+    @media (max-width: 340px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.25s;
+        cursor: pointer;
+    }
+    .card:hover {
+        transform: translateY(-4px);
+        border-color: var(--border2);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.35);
     }
 
-    .card { background: #fff; border: 1px solid #ddd; }
-    .card-img-wrap { position: relative; overflow: hidden; border-bottom: 1px solid #ddd; }
-    .card img { width: 100%; height: 180px; object-fit: cover; display: block; }
+    .card-img-wrap {
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid var(--border);
+    }
+    .card img {
+        width: 100%;
+        height: 190px;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.4s ease;
+    }
+    .card:hover img { transform: scale(1.04); }
 
-    .card[data-category="Electronics"] img { filter: blur(5px); }
+    .card[data-category="Electronics"] img { filter: blur(6px) brightness(0.7); }
+
     .blur-badge {
-        position: absolute; top: 50%; left: 50%;
+        position: absolute;
+        top: 50%; left: 50%;
         transform: translate(-50%, -50%);
-        background: rgba(0,0,0,0.6); color: #fff;
-        font-size: 0.75rem; padding: 4px 12px;
-        font-family: Georgia, serif; white-space: nowrap;
+        background: rgba(13,13,15,0.75);
+        border: 1px solid var(--border2);
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 600;
+        font-family: var(--font-body);
+        letter-spacing: 0.8px;
+        padding: 6px 14px;
+        border-radius: 40px;
         pointer-events: none;
+        white-space: nowrap;
+        backdrop-filter: blur(4px);
     }
 
-    .card-body { padding: 14px; }
-    .card-body .tag { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .card-body h3 { font-size: 1rem; margin-bottom: 4px; }
-    .card-body .loc { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
-    .card-body .when { font-size: 0.78rem; color: #aaa; margin-bottom: 12px; }
-    .card-body button {
-        width: 100%; padding: 8px; background: #222; color: #fff;
-        border: none; cursor: pointer; font-family: Georgia, serif; font-size: 0.9rem;
+    .card-category-badge {
+        position: absolute;
+        top: 10px; left: 10px;
+        background: rgba(13,13,15,0.8);
+        border: 1px solid var(--border2);
+        color: var(--accent);
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 40px;
+        backdrop-filter: blur(4px);
+        font-family: var(--font-body);
     }
-    .card-body button:hover { background: #444; }
 
-    .empty { text-align: center; padding: 60px 24px; color: #888; grid-column: 1 / -1; }
-    .empty h3 { margin-bottom: 6px; font-size: 1.1rem; }
+    .card-body { padding: 16px; }
+    .card-body h3 {
+        font-family: var(--font-head);
+        font-size: 0.98rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: var(--text);
+        line-height: 1.3;
+    }
+    .card-body .loc {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .card-body .when {
+        font-size: 0.74rem;
+        color: var(--faint);
+        margin-bottom: 14px;
+    }
+    .card-claim-btn {
+        width: 100%;
+        padding: 9px;
+        background: var(--accent-dim);
+        border: 1px solid rgba(232,201,126,0.2);
+        border-radius: 8px;
+        color: var(--accent);
+        cursor: pointer;
+        font-family: var(--font-head);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .card-claim-btn:hover { background: rgba(232,201,126,0.2); border-color: rgba(232,201,126,0.4); }
 
-    #noResults { display: none; text-align: center; padding: 60px 24px; color: #888; max-width: 960px; margin: 0 auto; }
-    #noResults h3 { margin-bottom: 6px; }
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 72px 24px; color: var(--muted); grid-column: 1 / -1; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 16px; opacity: 0.4; }
+    .empty h3 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
 
-    .divider { text-align: center; margin: 14px 0; font-size: 0.8rem; color: #aaa; position: relative; }
-    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: #eee; }
+    #noResults { display: none; text-align: center; padding: 60px 24px; color: var(--muted); max-width: 960px; margin: 0 auto; }
+    #noResults h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 8px; }
+
+    /* ── Divider ── */
+    .divider {
+        text-align: center;
+        margin: 18px 0;
+        font-size: 0.75rem;
+        color: var(--faint);
+        position: relative;
+    }
+    .divider::before, .divider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 44%;
+        height: 1px;
+        background: var(--border);
+    }
     .divider::before { left: 0; }
-    .divider::after { right: 0; }
+    .divider::after  { right: 0; }
 
-    .photo-match-section { background: #f9f9f9; border: 1px solid #eee; padding: 14px; margin-top: 4px; }
-    .photo-match-section p { font-size: 0.82rem; color: #666; margin-bottom: 10px; }
+    /* ── Photo match section ── */
+    .photo-match-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-top: 4px;
+    }
+    .photo-match-section p { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; line-height: 1.55; }
 </style>
 
-<header>
-    <h1>Campus Lost &amp; Found</h1>
-    <p>Helping reunite lost belongings with their owners.</p>
-    <div class="stats">
-        <div><strong id="activeCount">—</strong> Active Items</div>
-        <div><strong id="claimedCount">—</strong> Returned</div>
+<!-- Hero -->
+<div class="hero">
+    <div class="hero-eyebrow">Medicaps University</div>
+    <h1>Find what's <span>lost.</span><br>Return what's found.</h1>
+    <p class="hero-sub">A trusted space for students to report and reclaim lost belongings on campus.</p>
+    <div class="stats-row">
+        <div class="stat-pill">
+            <span class="stat-dot"></span>
+            <strong id="activeCount">—</strong> active items
+        </div>
+        <div class="stat-pill">
+            <strong id="claimedCount">—</strong> returned
+        </div>
     </div>
-</header>
+</div>
 
+<!-- Tools -->
 <div class="tools">
-    <input type="text" id="liveSearch" placeholder="Search by name or location…" autocomplete="off">
+    <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="liveSearch" placeholder="Search by item name or location…" autocomplete="off">
+    </div>
     <div class="toolbar-row">
         <div class="filters">
             <button class="active" data-filter="all">All</button>
             <button data-filter="Electronics">Electronics</button>
             <button data-filter="Generic">Other</button>
         </div>
-        <button class="report-btn" onclick="openModal('uploadModal')">+ Report Found Item</button>
+        <button class="report-btn" onclick="openModal('uploadModal')">+ Report Found</button>
     </div>
 </div>
 
+<!-- Grid -->
 <div class="grid" id="itemsGrid">
     {% for item in items %}
-    <div class="card item-entry" data-category="{{ item.category }}" data-name="{{ item.name|lower }}" data-location="{{ item.location|lower }}">
+    <div class="card item-entry"
+         data-category="{{ item.category }}"
+         data-name="{{ item.name|lower }}"
+         data-location="{{ item.location|lower }}"
+         onclick="openModal('verifyModal{{ item.id }}')">
         <div class="card-img-wrap">
             <img src="{{ item.image_file }}" alt="{{ item.name }}" loading="lazy">
+            <span class="card-category-badge">{{ item.category }}</span>
             {% if item.category == 'Electronics' %}
             <div class="blur-badge">🔒 Verify to reveal</div>
             {% endif %}
         </div>
         <div class="card-body">
-            <div class="tag">{{ item.category }}</div>
             <h3>{{ item.name }}</h3>
             <div class="loc">📍 {{ item.location }}</div>
             <div class="when">{{ item.created_at.strftime('%d %b %Y') }}</div>
-            <button onclick="openModal('verifyModal{{ item.id }}')">Claim Item</button>
+            <button class="card-claim-btn" onclick="event.stopPropagation(); openModal('verifyModal{{ item.id }}')">Claim this item →</button>
         </div>
     </div>
 
@@ -136,40 +378,39 @@
         <div class="modal">
             <div class="modal-head">
                 <h2>Claim: {{ item.name }}</h2>
-                <button class="modal-close" onclick="closeModal('verifyModal{{ item.id }}')">×</button>
+                <button class="modal-close" onclick="closeModal('verifyModal{{ item.id }}')">✕</button>
             </div>
             <div class="modal-body">
                 <div id="result-{{ item.id }}" class="alert" style="display:none;"></div>
 
-                <!-- Answer verification -->
                 <form onsubmit="handleVerify(event, {{ item.id }})">
                     <div class="form-group">
-                        <label>Question from finder:</label>
+                        <label>Question from finder</label>
                         <div class="secret-box">"{{ item.secret_question }}"</div>
-                        <input type="text" name="answer" placeholder="Your answer" required autocomplete="off">
+                        <input type="text" name="answer" placeholder="Your answer…" required autocomplete="off">
                         <div class="form-hint">Not case sensitive.</div>
                     </div>
-                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('verifyModal{{ item.id }}')">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Verify</button>
+                        <button type="submit" class="btn btn-primary">Verify Claim</button>
                     </div>
                 </form>
 
-                <!-- Photo match section -->
                 <div class="divider">or</div>
+
                 <div class="photo-match-section">
-                    <p>📸 Can't answer the question? Upload a photo of the item and we'll notify the admin to verify if it's yours.</p>
+                    <p>Can't answer the question? Upload a photo of the item and an admin will verify your ownership.</p>
                     <div id="match-result-{{ item.id }}" class="alert" style="display:none;"></div>
                     <form onsubmit="handlePhotoMatch(event, {{ item.id }})" enctype="multipart/form-data">
                         <div class="form-group">
-                            <label style="font-size:0.85rem;">Upload your photo of this item</label>
+                            <label>Upload your photo</label>
                             <div style="display:flex; gap:8px; margin-bottom:8px;">
-                                <label class="file-label" for="matchGallery{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.82rem;">🖼️ Gallery</label>
-                                <label class="file-label" for="matchCamera{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.82rem;">📷 Camera</label>
+                                <label class="file-label" for="matchGallery{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.8rem;">🖼 Gallery</label>
+                                <label class="file-label" for="matchCamera{{ item.id }}" style="flex:1; margin:0; padding:10px; font-size:0.8rem;">📷 Camera</label>
                             </div>
                             <input type="file" name="match_photo" id="matchGallery{{ item.id }}" accept="image/*" onchange="previewMatchImage(this, {{ item.id }})" style="display:none;">
                             <input type="file" id="matchCamera{{ item.id }}" accept="image/*" capture="environment" onchange="syncMatchCamera(this, {{ item.id }})" style="display:none;">
-                            <img id="matchPreview{{ item.id }}" alt="Preview" style="width:100%; margin-top:8px; display:none; border:1px solid #ddd;">
+                            <img id="matchPreview{{ item.id }}" alt="Preview" style="width:100%; margin-top:8px; display:none; border-radius:var(--radius); border:1px solid var(--border2);">
                         </div>
                         <button type="submit" class="btn btn-primary" style="width:100%;">Submit for Admin Review</button>
                     </form>
@@ -181,6 +422,7 @@
 
     {% if not items %}
     <div class="empty">
+        <div class="empty-icon">🔍</div>
         <h3>No active items</h3>
         <p>Everything is exactly where it should be.</p>
     </div>
@@ -197,7 +439,7 @@
     <div class="modal">
         <div class="modal-head">
             <h2>Report a Found Item</h2>
-            <button class="modal-close" onclick="closeModal('uploadModal')">×</button>
+            <button class="modal-close" onclick="closeModal('uploadModal')">✕</button>
         </div>
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <div class="modal-body">
@@ -218,12 +460,12 @@
                 <div class="form-group">
                     <label>Photo</label>
                     <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <label class="file-label" for="photoInput" style="flex:1; margin:0;">🖼️ Gallery</label>
+                        <label class="file-label" for="photoInput" style="flex:1; margin:0;">🖼 Gallery</label>
                         <label class="file-label" for="cameraInput" style="flex:1; margin:0;">📷 Camera</label>
                     </div>
                     <input type="file" name="photo" id="photoInput" accept="image/*" onchange="previewImage(this)" style="display:none;">
                     <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="syncCamera(this)" style="display:none;">
-                    <img id="imagePreview" alt="Preview" style="width:100%; margin-top:8px; display:none; border:1px solid #ddd;">
+                    <img id="imagePreview" alt="Preview">
                 </div>
                 <div class="form-group">
                     <label>Category</label>
@@ -231,8 +473,8 @@
                         <option value="Generic">Standard Item</option>
                         <option value="Electronics">Electronics (Phone, Laptop…)</option>
                     </select>
-                    <div class="form-hint" id="electronicsNote" style="display:none;">
-                        📷 The photo will be blurred on the listing so only the real owner can identify it.
+                    <div class="form-hint" id="electronicsNote" style="display:none; color: var(--accent);">
+                        📷 Photo will be blurred so only the real owner can identify it.
                     </div>
                 </div>
                 <div class="form-group">
@@ -246,17 +488,16 @@
                     <input type="text" name="secret_answer" placeholder="e.g. A sunset" required>
                 </div>
                 <div class="form-group">
-                    <div class="form-hint" style="color:#555;">🔒 Your contact is only shared after the owner passes verification.</div>
+                    <div class="form-hint" style="color: var(--accent);">🔒 Your contact is only shared after the owner passes verification.</div>
                 </div>
             </div>
             <div class="modal-foot">
                 <button type="button" class="btn btn-ghost" onclick="closeModal('uploadModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="submit" class="btn btn-primary">Submit Item</button>
             </div>
         </form>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -374,7 +615,7 @@
         const resultEl = document.getElementById('match-result-' + itemId);
         const formData = new FormData(form);
 
-        resultEl.textContent   = 'Uploading photo...';
+        resultEl.textContent   = 'Uploading photo…';
         resultEl.className     = 'alert alert-success';
         resultEl.style.display = 'block';
 

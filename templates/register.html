@@ -3,40 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register — SnapFind</title>
+    <title>Create Account — SnapFind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Georgia, serif; background: #f5f5f0; color: #222; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        :root {
+            --bg: #0d0d0f; --bg2: #141417; --surface: #1f1f26; --surface2: #26262e;
+            --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+            --text: #f0efe8; --muted: #8a8a9a; --faint: #3a3a48;
+            --accent: #e8c97e; --accent2: #f5dfa0;
+            --accent-dim: rgba(232,201,126,0.1);
+            --success: #5fb88a; --danger: #e06b6b;
+            --radius: 10px; --radius-lg: 16px;
+            --font-head: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(232,201,126,0.07) 0%, transparent 60%);
+            pointer-events: none;
+        }
 
-        .card { background: #fff; border: 1px solid #ddd; width: 100%; max-width: 380px; padding: 36px; }
-        .brand { font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 24px; }
-        h1 { font-size: 1.4rem; margin-bottom: 6px; }
-        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 24px; }
+        .auth-wrap { width: 100%; max-width: 420px; position: relative; z-index: 1; }
 
-        .hint { background: #f5f5f0; border: 1px solid #ddd; padding: 10px 14px; font-size: 0.82rem; color: #555; margin-bottom: 20px; }
+        .auth-brand {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 32px;
+        }
+        .auth-brand-dot {
+            width: 8px; height: 8px; background: var(--accent);
+            border-radius: 50%; box-shadow: 0 0 12px var(--accent);
+        }
+        .auth-brand-name { font-family: var(--font-head); font-weight: 800; font-size: 1.1rem; color: var(--text); }
+
+        .auth-card {
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-lg);
+            padding: 36px;
+        }
+        .auth-card h1 { font-family: var(--font-head); font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+        .auth-subtitle { color: var(--muted); font-size: 0.88rem; font-weight: 300; margin-bottom: 24px; }
+
+        .auth-hint {
+            background: var(--accent-dim);
+            border: 1px solid rgba(232,201,126,0.2);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            font-size: 0.8rem;
+            color: var(--accent2);
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        .flash { padding: 10px 14px; margin-bottom: 16px; font-size: 0.83rem; border-radius: var(--radius); }
+        .flash.danger  { background: rgba(224,107,107,0.1); color: var(--danger); border: 1px solid rgba(224,107,107,0.2); }
+        .flash.success { background: rgba(95,184,138,0.1); color: var(--success); border: 1px solid rgba(95,184,138,0.2); }
 
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; }
-        .form-group input { width: 100%; padding: 9px 12px; border: 1px solid #ccc; font-family: Georgia, serif; font-size: 0.95rem; background: #fafafa; }
-        .form-group input:focus { outline: none; border-color: #222; background: #fff; }
-        .form-hint { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+        .form-group label {
+            display: block;
+            font-size: 0.74rem;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 7px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            font-family: var(--font-body);
+            font-size: 0.92rem;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color 0.2s, background 0.2s;
+            -webkit-appearance: none;
+        }
+        .form-group input::placeholder { color: var(--faint); }
+        .form-group input:focus { outline: none; border-color: var(--accent); background: var(--surface2); }
+        .form-hint { font-size: 0.73rem; color: var(--muted); margin-top: 5px; }
 
-        .flash { padding: 8px 12px; margin-bottom: 14px; font-size: 0.85rem; }
-        .flash.danger  { background: #f8d7da; color: #721c24; }
-        .flash.success { background: #d4edda; color: #155724; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 440px) { .form-row { grid-template-columns: 1fr; } }
 
-        .submit-btn { width: 100%; padding: 10px; background: #222; color: #fff; border: none; font-family: Georgia, serif; font-size: 0.95rem; cursor: pointer; margin-top: 4px; }
-        .submit-btn:hover { background: #444; }
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: #0d0c09;
+            border: none;
+            border-radius: var(--radius);
+            font-family: var(--font-head);
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            transition: background 0.2s, transform 0.15s;
+            margin-top: 4px;
+        }
+        .submit-btn:hover { background: var(--accent2); transform: translateY(-1px); }
 
-        .switch { text-align: center; margin-top: 18px; font-size: 0.875rem; color: #888; }
-        .switch a { color: #222; }
+        .auth-switch { text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--muted); }
+        .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 500; }
+        .auth-switch a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="brand">Lost &amp; Found</div>
+<div class="auth-wrap">
+    <div class="auth-brand">
+        <span class="auth-brand-dot"></span>
+        <span class="auth-brand-name">SnapFind</span>
+    </div>
+
+    <div class="auth-card">
         <h1>Create account</h1>
-        <p class="subtitle">Join SnapFind with your college ID.</p>
+        <p class="auth-subtitle">Join SnapFind with your Medicaps ID.</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
@@ -44,7 +142,7 @@
         {% endfor %}
         {% endwith %}
 
-        <div class="hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
+        <div class="auth-hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
 
         <form method="POST">
             <div class="form-group">
@@ -58,20 +156,23 @@
             </div>
             <div class="form-group">
                 <label>Phone Number</label>
-                <input type="tel" name="phone" placeholder="e.g. 9876543210" required>
+                <input type="tel" name="phone" placeholder="9876543210" required>
             </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="At least 6 characters" required>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Min 6 characters" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirm</label>
+                    <input type="password" name="confirm" placeholder="Repeat password" required>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm" placeholder="Repeat password" required>
-            </div>
-            <button type="submit" class="submit-btn">Create Account</button>
+            <button type="submit" class="submit-btn">Create Account →</button>
         </form>
-
-        <div class="switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
     </div>
+
+    <div class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
+</div>
 </body>
 </html>
