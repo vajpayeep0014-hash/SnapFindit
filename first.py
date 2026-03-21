@@ -115,11 +115,34 @@ class FlaggedClaim(db.Model):
 # ─── Gemini helpers ────────────────────────────────────────────────────────────
 
 def _gemini(prompt):
-    """Raw Gemini call — returns text or raises."""
+    """Raw Gemini text-only call."""
     resp = requests.post(
         f'{GEMINI_URL}?key={GEMINI_API_KEY}',
         json={'contents': [{'parts': [{'text': prompt}]}]},
         timeout=(3, 5)
+    )
+    return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+
+
+def _gemini_vision(prompt_text, image_url):
+    """Gemini vision call — fetch image and send as base64."""
+    img_resp = requests.get(image_url, timeout=(3, 8))
+    img_resp.raise_for_status()
+    import base64, mimetypes
+    b64 = base64.b64encode(img_resp.content).decode('utf-8')
+    mime = img_resp.headers.get('Content-Type', 'image/jpeg').split(';')[0]
+    payload = {
+        'contents': [{
+            'parts': [
+                {'text': prompt_text},
+                {'inline_data': {'mime_type': mime, 'data': b64}}
+            ]
+        }]
+    }
+    resp = requests.post(
+        f'{GEMINI_URL}?key={GEMINI_API_KEY}',
+        json=payload,
+        timeout=(3, 10)
     )
     return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
 
@@ -150,6 +173,27 @@ Do NOT flag: short but real descriptions, common items, incomplete descriptions.
 Reply ONLY with JSON (no markdown):
 {{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
         data = _parse_json(_gemini(prompt))
+        return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
+    except Exception:
+        return {'flagged': False, 'reason': ''}
+
+
+def check_photo_matches_item(item_name, proof_photo_url):
+    """Use Gemini Vision to check if the proof photo looks like the claimed item."""
+    if not GEMINI_API_KEY or not proof_photo_url:
+        return {'flagged': False, 'reason': ''}
+    try:
+        prompt = f"""You are a fraud detection system for a college lost & found platform.
+Look at this image carefully and answer: does this image show a '{item_name}' or something closely related to it?
+
+Flag as mismatched if the image is clearly something completely different from a '{item_name}'.
+For example — if someone claims to have lost earbuds but uploads a photo of a watch, flag it.
+Do NOT flag if the image is blurry, partial, or from an unusual angle but still plausible.
+Do NOT flag if the image could reasonably be part of or related to a '{item_name}'.
+
+Reply ONLY with JSON (no markdown):
+{{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
+        data = _parse_json(_gemini_vision(prompt, proof_photo_url))
         return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
     except Exception:
         return {'flagged': False, 'reason': ''}
@@ -413,7 +457,7 @@ def submit_claim(item_id):
         except Exception:
             pass
 
-    # ── AI spam check ──
+    # ── AI spam check: text ──
     ai = check_claim_spam(item.name, when_where)
     if ai['flagged']:
         db.session.add(FlaggedClaim(
@@ -422,6 +466,18 @@ def submit_claim(item_id):
         ))
         db.session.commit()
         return respond(False, 'Please provide more specific details about when and where you lost the item.')
+
+    # ── AI spam check: photo (if uploaded) ──
+    if proof_photo_url:
+        photo_check = check_photo_matches_item(item.name, proof_photo_url)
+        if photo_check['flagged']:
+            db.session.add(FlaggedClaim(
+                item_id=item.id, claimant_id=user.id, phone=phone,
+                when_where=when_where, proof_photo=proof_photo_url,
+                ai_reason=f'Photo mismatch: {photo_check["reason"]}'
+            ))
+            db.session.commit()
+            return respond(False, 'The photo you uploaded does not appear to match the claimed item. Please upload a correct photo or leave it blank.')
 
     db.session.add(ClaimRequest(
         item_id=item.id, claimant_id=user.id,
