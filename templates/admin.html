@@ -8,35 +8,35 @@
     .adm-hero p { color:var(--muted); font-size:.83rem; }
 
     .kpi-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
-    .kpi { background:rgba(255,255,255,.03); backdrop-filter:blur(16px); border:1px solid var(--border2); border-radius:var(--radius-lg); padding:16px 22px; min-width:100px; flex:1; transition:border-color .2s; }
+    .kpi { background:var(--card-bg); backdrop-filter:blur(16px); border:1px solid var(--border2); border-radius:var(--radius-lg); padding:16px 22px; min-width:100px; flex:1; transition:border-color .2s; }
     .kpi:hover { border-color:rgba(0,212,255,.25); }
     .kpi strong { font-family:var(--font-head); font-size:1.7rem; font-weight:800; color:var(--accent); display:block; margin-bottom:3px; text-shadow:0 0 20px var(--accent-glow); }
     .kpi span { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:500; }
 
     .adm-wrap { max-width:1060px; margin:0 auto; padding:0 28px 60px; position:relative; z-index:1; }
 
-    .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:24px; }
-    .tab-btn { padding:11px 22px; background:none; border:none; font-family:var(--font-body); font-size:.84rem; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s; white-space:nowrap; }
+    .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+    .tab-btn { padding:11px 22px; background:none; border:none; font-family:var(--font-body); font-size:.84rem; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s; white-space:nowrap; flex-shrink:0; }
     .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
     .tab-btn:hover:not(.active) { color:var(--text); }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
 
     .bcnt { display:inline-block; background:var(--danger); color:#fff; font-size:.64rem; font-weight:700; padding:1px 6px; border-radius:40px; margin-left:6px; }
+    .pcnt { display:inline-block; background:#fabd00; color:#07090f; font-size:.64rem; font-weight:700; padding:1px 6px; border-radius:40px; margin-left:6px; }
 
     .search-bar { width:100%; max-width:300px; padding:9px 14px; border:1px solid var(--border2); border-radius:var(--radius); font-family:var(--font-body); font-size:.84rem; margin-bottom:16px; background:var(--surface); color:var(--text); transition:border-color .2s; }
     .search-bar::placeholder { color:var(--faint); }
     .search-bar:focus { outline:none; border-color:rgba(0,212,255,.4); }
 
     .tw { overflow-x:auto; border-radius:var(--radius-lg); border:1px solid var(--border); }
-    table { width:100%; border-collapse:collapse; background:rgba(12,17,32,.8); font-size:.83rem; }
-    th { background:rgba(255,255,255,.03); padding:11px 16px; text-align:left; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); font-weight:600; white-space:nowrap; }
+    table { width:100%; border-collapse:collapse; background:rgba(12,17,32,.7); font-size:.83rem; }
+    th { background:var(--surface); padding:11px 16px; text-align:left; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); font-weight:600; white-space:nowrap; }
     td { padding:12px 16px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text); }
     tr:last-child td { border-bottom:none; }
     tr:hover td { background:rgba(255,255,255,.02); }
 
     .thumb { width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid var(--border); display:block; }
-    .thumb-lg { width:78px; height:78px; object-fit:cover; border-radius:8px; border:1px solid var(--border); display:block; }
 
     .af { display:inline; }
     .abtn { padding:5px 12px; border:1px solid var(--border2); background:transparent; color:var(--muted); font-family:var(--font-body); font-size:.73rem; font-weight:500; cursor:pointer; border-radius:7px; transition:all .18s; white-space:nowrap; }
@@ -48,13 +48,15 @@
 
     .b-claimed { font-size:.7rem; color:var(--success); font-weight:600; }
     .b-active  { font-size:.7rem; color:var(--muted); }
+    .b-pending { font-size:.7rem; color:#fabd00; font-weight:600; }
     .b-admin   { font-size:.7rem; font-weight:700; color:var(--accent); }
+    .cat-pill  { font-size:.67rem; padding:3px 10px; border-radius:40px; background:var(--surface); border:1px solid var(--border2); color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
 
-    .cat-pill { font-size:.67rem; padding:3px 10px; border-radius:40px; background:var(--surface); border:1px solid var(--border2); color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
-
-    .conflict-tr td { background:rgba(0,212,255,.02); }
-    .conflict-tr:hover td { background:rgba(0,212,255,.05) !important; }
-    .ci { font-size:.77rem; color:var(--muted); line-height:1.7; }
+    /* Claim request rows */
+    .claim-row td { background:rgba(250,189,0,.02); }
+    .claim-row:hover td { background:rgba(250,189,0,.05) !important; }
+    .claim-detail { font-size:.79rem; color:var(--muted); line-height:1.65; }
+    .claim-detail strong { color:var(--text); font-weight:500; }
 
     .empty-state { text-align:center; padding:60px 24px; color:var(--muted); }
     .empty-state h3 { font-family:var(--font-head); font-weight:700; color:var(--text); margin-bottom:6px; }
@@ -62,40 +64,109 @@
 
 <div class="adm-hero">
     <h1>Admin Panel</h1>
-    <p>Logged in as {{ user.email }}</p>
+    <p>Logged in as {{ user.email }} · Room 115, V Block</p>
     <div class="kpi-row">
         <div class="kpi"><strong>{{ active }}</strong><span>Active</span></div>
         <div class="kpi"><strong>{{ claimed }}</strong><span>Returned</span></div>
         <div class="kpi"><strong>{{ user_count }}</strong><span>Users</span></div>
-        <div class="kpi"><strong>{{ conflict_count }}</strong><span>Conflicts</span></div>
-        <div class="kpi"><strong>{{ active + claimed }}</strong><span>Total</span></div>
+        <div class="kpi"><strong>{{ pending_count }}</strong><span>Pending Claims</span></div>
+        <div class="kpi"><strong>{{ active + claimed }}</strong><span>Total Items</span></div>
     </div>
 </div>
 
 <div class="adm-wrap">
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
+        <button class="tab-btn active" onclick="switchTab(event,'claims')">
+            Claim Requests
+            {% if pending_count > 0 %}<span class="pcnt">{{ pending_count }}</span>{% endif %}
+        </button>
+        <button class="tab-btn" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
-        <button class="tab-btn" onclick="switchTab(event,'conflicts')">Conflicts{% if conflict_count > 0 %}<span class="bcnt">{{ conflict_count }}</span>{% endif %}</button>
     </div>
 
-    <div class="tab-panel active" id="tab-items">
+    <!-- Claims tab — shown first, most important -->
+    <div class="tab-panel active" id="tab-claims">
+        {% if claim_requests %}
+        <div class="tw"><table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Photo</th>
+                    <th>Claimer</th>
+                    <th>Contact</th>
+                    <th>Why theirs?</th>
+                    <th>Item Description</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for cr in claim_requests %}
+            <tr class="claim-row">
+                <td>
+                    <strong style="font-family:var(--font-head);font-weight:700;">{{ cr.item.name }}</strong><br>
+                    <span style="font-size:.75rem;color:var(--muted);">📍 {{ cr.item.location }}</span>
+                </td>
+                <td><img class="thumb" src="{{ cr.item.image_file }}" alt="{{ cr.item.name }}"></td>
+                <td>
+                    <div class="claim-detail">
+                        <strong>{{ cr.claimant.name }}</strong><br>
+                        {{ cr.claimant.email }}
+                    </div>
+                </td>
+                <td>
+                    <div class="claim-detail">📞 {{ cr.phone }}</div>
+                </td>
+                <td style="max-width:180px;">
+                    <div class="claim-detail">{{ cr.why_mine }}</div>
+                </td>
+                <td style="max-width:200px;">
+                    <div class="claim-detail">{{ cr.proof_desc }}</div>
+                </td>
+                <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ cr.created_at.strftime('%d %b %Y') }}</td>
+                <td>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <form class="af" method="POST" action="/admin/claim/approve/{{ cr.id }}" onsubmit="return confirm('Approve this claim? Item will be marked as returned.')">
+                            <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
+                        </form>
+                        <form class="af" method="POST" action="/admin/claim/reject/{{ cr.id }}" onsubmit="return confirm('Reject this claim?')">
+                            <button class="abtn abtn-danger" style="width:100%;">✗ Reject</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-state">
+            <div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📋</div>
+            <h3>No pending claim requests</h3>
+            <p>When students claim an item, it will appear here for your review.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Items tab -->
+    <div class="tab-panel" id="tab-items">
         <input class="search-bar" type="text" placeholder="Search items…" oninput="filterTable(this,'itemsTable')">
         <div class="tw"><table id="itemsTable">
-            <thead><tr><th>Photo</th><th>Item</th><th>Location</th><th>Category</th><th>Q &amp; A</th><th>Reporter</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Photo</th><th>Item</th><th>Location</th><th>Block</th><th>Category</th><th>Reporter</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             {% for item in items %}
             <tr class="trow" data-search="{{ item.name|lower }} {{ item.location|lower }}">
                 <td><img class="thumb" src="{{ item.image_file }}" alt="{{ item.name }}"></td>
                 <td><strong style="font-family:var(--font-head);font-weight:700;">{{ item.name }}</strong></td>
                 <td style="color:var(--muted);">{{ item.location }}</td>
+                <td><span class="cat-pill">{{ item.block or '—' }}</span></td>
                 <td><span class="cat-pill">{{ item.category }}</span></td>
-                <td style="font-size:.77rem;max-width:180px;">
-                    {% if item.secret_question %}<span style="color:var(--muted);">Q: {{ item.secret_question }}</span><br><span style="color:var(--accent);font-weight:600;">A: {{ item.secret_answer }}</span>{% else %}—{% endif %}
-                </td>
                 <td style="font-size:.77rem;color:var(--muted);">{{ item.reporter.email if item.reporter else '—' }}</td>
                 <td style="font-size:.77rem;color:var(--muted);">{{ item.created_at.strftime('%d %b %Y') }}</td>
-                <td>{% if item.claimed %}<span class="b-claimed">✓ Claimed</span>{% else %}<span class="b-active">Active</span>{% endif %}</td>
+                <td>
+                    {% if item.claimed %}<span class="b-claimed">✓ Returned</span>
+                    {% elif item.pending %}<span class="b-pending">⏳ Pending</span>
+                    {% else %}<span class="b-active">Active</span>{% endif %}
+                </td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                     {% if item.claimed %}
                     <form class="af" method="POST" action="/admin/unclaim/{{ item.id }}" onsubmit="return confirm('Mark as unclaimed?')"><button class="abtn">↩ Unclaim</button></form>
@@ -108,6 +179,7 @@
         </table></div>
     </div>
 
+    <!-- Users tab -->
     <div class="tab-panel" id="tab-users">
         <input class="search-bar" type="text" placeholder="Search users…" oninput="filterTable(this,'usersTable')">
         <div class="tw"><table id="usersTable">
@@ -122,37 +194,17 @@
                 <td style="font-size:.77rem;color:var(--muted);">{{ u.created_at.strftime('%d %b %Y') }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.items_posted|length }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.claims|length }}</td>
-                <td>{% if u.email != user.email %}<form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')"><button class="abtn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button></form>{% else %}<span style="font-size:.75rem;color:var(--faint);">You</span>{% endif %}</td>
+                <td>
+                    {% if u.email != user.email %}
+                    <form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')">
+                        <button class="abtn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button>
+                    </form>
+                    {% else %}<span style="font-size:.75rem;color:var(--faint);">You</span>{% endif %}
+                </td>
             </tr>
             {% endfor %}
             </tbody>
         </table></div>
-    </div>
-
-    <div class="tab-panel" id="tab-conflicts">
-        {% if conflicts %}
-        <div class="tw"><table>
-            <thead><tr><th>Item Photo</th><th>Item</th><th>Claimant Photo</th><th>Finder Contact</th><th>Claimant Contact</th><th>Date</th><th>Actions</th></tr></thead>
-            <tbody>
-            {% for conflict in conflicts %}
-            <tr class="conflict-tr">
-                <td><img class="thumb-lg" src="{{ conflict.item.image_file }}" alt="{{ conflict.item.name }}"><span style="font-size:.71rem;color:var(--muted);display:block;margin-top:4px;">{{ conflict.item.name }}</span></td>
-                <td><strong style="font-family:var(--font-head);font-weight:700;">{{ conflict.item.name }}</strong><br><span style="font-size:.77rem;color:var(--muted);">📍 {{ conflict.item.location }}</span></td>
-                <td><img class="thumb-lg" src="{{ conflict.uploaded_image }}" alt="Claimant photo"></td>
-                <td><div class="ci">{% if conflict.item.reporter %}<div>📧 {{ conflict.item.reporter.email }}</div><div>📞 {{ conflict.item.reporter.phone or 'Not provided' }}</div>{% else %}—{% endif %}</div></td>
-                <td><div class="ci"><div>📧 {{ conflict.claimant.email }}</div><div>📞 {{ conflict.claimant.phone or 'Not provided' }}</div></div></td>
-                <td style="font-size:.77rem;color:var(--muted);">{{ conflict.created_at.strftime('%d %b %Y') }}</td>
-                <td><div style="display:flex;flex-direction:column;gap:6px;">
-                    <form class="af" method="POST" action="/admin/conflict/confirm/{{ conflict.id }}" onsubmit="return confirm('Confirm this match?')"><button class="abtn abtn-success" style="width:100%;">✓ Confirm</button></form>
-                    <form class="af" method="POST" action="/admin/conflict/reject/{{ conflict.id }}" onsubmit="return confirm('Reject this request?')"><button class="abtn abtn-danger" style="width:100%;">✗ Reject</button></form>
-                </div></td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table></div>
-        {% else %}
-        <div class="empty-state"><h3>No pending conflicts</h3><p>Photo match requests will appear here.</p></div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
