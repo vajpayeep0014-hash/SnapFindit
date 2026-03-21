@@ -181,6 +181,7 @@ Reply ONLY with JSON (no markdown):
 def check_photo_matches_item(item_name, proof_photo_url):
     """Use Gemini Vision to check if the proof photo looks like the claimed item."""
     if not GEMINI_API_KEY or not proof_photo_url:
+        app.logger.warning('PHOTO_CHECK: skipped — no API key or no photo URL')
         return {'flagged': False, 'reason': ''}
     try:
         prompt = f"""You are a fraud detection system for a college lost & found platform.
@@ -193,9 +194,13 @@ Do NOT flag if the image could reasonably be part of or related to a '{item_name
 
 Reply ONLY with JSON (no markdown):
 {{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
-        data = _parse_json(_gemini_vision(prompt, proof_photo_url))
+        raw = _gemini_vision(prompt, proof_photo_url)
+        app.logger.info(f'PHOTO_CHECK raw response: {raw}')
+        data = _parse_json(raw)
+        app.logger.info(f'PHOTO_CHECK parsed: {data}')
         return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
-    except Exception:
+    except Exception as e:
+        app.logger.error(f'PHOTO_CHECK exception: {e}')
         return {'flagged': False, 'reason': ''}
 
 
@@ -450,12 +455,16 @@ def submit_claim(item_id):
     # Optional proof photo
     proof_photo_url = None
     proof_file = request.files.get('proof_photo')
+    app.logger.info(f'CLAIM_PHOTO: file={proof_file}, filename={proof_file.filename if proof_file else None}')
     if proof_file and proof_file.filename and allowed_file(proof_file.filename):
         try:
             r = cloudinary.uploader.upload(proof_file, format='jpg', transformation=[{'quality': 'auto'}])
             proof_photo_url = r['secure_url']
-        except Exception:
-            pass
+            app.logger.info(f'CLAIM_PHOTO: uploaded OK → {proof_photo_url}')
+        except Exception as e:
+            app.logger.error(f'CLAIM_PHOTO: upload failed → {e}')
+    else:
+        app.logger.warning(f'CLAIM_PHOTO: skipped — not a valid file')
 
     # ── AI spam check: text ──
     ai = check_claim_spam(item.name, when_where)
