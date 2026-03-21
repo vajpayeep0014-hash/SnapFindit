@@ -26,6 +26,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN     = '@medicaps.ac.in'
 ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
+print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -180,8 +181,11 @@ Reply ONLY with JSON (no markdown):
 
 def check_photo_matches_item(item_name, proof_photo_url):
     """Use Gemini Vision to check if the proof photo looks like the claimed item."""
-    if not GEMINI_API_KEY or not proof_photo_url:
-        app.logger.warning('PHOTO_CHECK: skipped — no API key or no photo URL')
+    if not GEMINI_API_KEY:
+        app.logger.warning('PHOTO_CHECK: skipped -- GEMINI_API_KEY is empty')
+        return {'flagged': False, 'reason': ''}
+    if not proof_photo_url:
+        app.logger.warning('PHOTO_CHECK: skipped -- proof_photo_url is None')
         return {'flagged': False, 'reason': ''}
     try:
         prompt = f"""You are a fraud detection system for a college lost & found platform.
