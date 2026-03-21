@@ -71,6 +71,7 @@
         <div class="kpi"><strong>{{ user_count }}</strong><span>Users</span></div>
         <div class="kpi"><strong>{{ pending_count }}</strong><span>Pending Claims</span></div>
         <div class="kpi"><strong>{{ active + claimed }}</strong><span>Total Items</span></div>
+        <div class="kpi" style="border-color:rgba(248,113,113,.25);"><strong style="color:var(--danger);">{{ flagged_count }}</strong><span>Flagged</span></div>
     </div>
 </div>
 
@@ -82,6 +83,10 @@
         </button>
         <button class="tab-btn" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
+        <button class="tab-btn" onclick="switchTab(event,'flagged')">
+            🚩 Flagged
+            {% if flagged_count > 0 %}<span class="bcnt">{{ flagged_count }}</span>{% endif %}
+        </button>
     </div>
 
     <!-- Claims tab — shown first, most important -->
@@ -213,6 +218,90 @@
         </table></div>
     </div>
 </div>
+
+    <!-- Flagged tab -->
+    <div class="tab-panel" id="tab-flagged">
+
+        <!-- Flagged Items (finder posts) -->
+        <div style="margin-bottom:28px;">
+            <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--danger);">🚩</span> Flagged Finder Posts
+                <span style="font-size:.72rem;color:var(--muted);font-weight:400;font-family:var(--font-body);">AI flagged these as suspicious — review and approve if genuine</span>
+            </div>
+            {% if flagged_items %}
+            <div class="tw"><table>
+                <thead><tr><th>Photo</th><th>Item</th><th>Location</th><th>Reporter</th><th>AI Reason</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for fi in flagged_items %}
+                <tr style="background:rgba(248,113,113,.02);">
+                    <td>{% if fi.image_file %}<img class="thumb" src="{{ fi.image_file }}" alt="{{ fi.name }}">{% else %}—{% endif %}</td>
+                    <td><strong style="font-family:var(--font-head);font-weight:700;">{{ fi.name }}</strong><br><span style="font-size:.75rem;color:var(--muted);">{{ fi.category }}</span></td>
+                    <td style="color:var(--muted);font-size:.8rem;">{{ fi.location }}<br><span style="color:var(--faint);">{{ fi.block or '' }}</span></td>
+                    <td style="font-size:.78rem;color:var(--muted);">{{ fi.reporter.email if fi.reporter else '—' }}</td>
+                    <td style="max-width:200px;font-size:.78rem;color:var(--danger);font-style:italic;">{{ fi.ai_reason }}</td>
+                    <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ fi.created_at.strftime('%d %b %Y') }}</td>
+                    <td>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <form class="af" method="POST" action="/admin/flagged-item/approve/{{ fi.id }}" onsubmit="return confirm('Approve and move to live listings?')">
+                                <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
+                            </form>
+                            <form class="af" method="POST" action="/admin/flagged-item/delete/{{ fi.id }}" onsubmit="return confirm('Delete permanently?')">
+                                <button class="abtn abtn-danger" style="width:100%;">✗ Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+            <div style="text-align:center;padding:32px;color:var(--muted);background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);">No flagged posts — AI is not flagging anything suspicious.</div>
+            {% endif %}
+        </div>
+
+        <!-- Flagged Claims -->
+        <div>
+            <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--danger);">🚩</span> Flagged Claim Requests
+                <span style="font-size:.72rem;color:var(--muted);font-weight:400;font-family:var(--font-body);">AI flagged these as suspicious — approve if genuine</span>
+            </div>
+            {% if flagged_claims %}
+            <div class="tw"><table>
+                <thead><tr><th>Item</th><th>Claimer</th><th>Phone</th><th>When/Where</th><th>Proof</th><th>AI Reason</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for fc in flagged_claims %}
+                <tr style="background:rgba(248,113,113,.02);">
+                    <td><strong style="font-family:var(--font-head);font-weight:700;">{{ fc.item.name }}</strong></td>
+                    <td style="font-size:.78rem;color:var(--muted);">{{ fc.claimant.name }}<br>{{ fc.claimant.email }}</td>
+                    <td style="font-size:.78rem;">📞 {{ fc.phone }}</td>
+                    <td style="max-width:180px;font-size:.78rem;color:var(--muted);">{{ fc.when_where }}</td>
+                    <td>
+                        {% if fc.proof_photo %}
+                        <img src="{{ fc.proof_photo }}" style="width:50px;height:50px;object-fit:cover;border-radius:7px;border:1px solid var(--border);cursor:pointer;" onclick="window.open('{{ fc.proof_photo }}','_blank')">
+                        {% else %}<span style="font-size:.75rem;color:var(--faint);">None</span>{% endif %}
+                    </td>
+                    <td style="max-width:180px;font-size:.78rem;color:var(--danger);font-style:italic;">{{ fc.ai_reason }}</td>
+                    <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ fc.created_at.strftime('%d %b %Y') }}</td>
+                    <td>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <form class="af" method="POST" action="/admin/flagged-claim/approve/{{ fc.id }}" onsubmit="return confirm('Approve and move to pending claims?')">
+                                <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
+                            </form>
+                            <form class="af" method="POST" action="/admin/flagged-claim/delete/{{ fc.id }}" onsubmit="return confirm('Delete permanently?')">
+                                <button class="abtn abtn-danger" style="width:100%;">✗ Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+            <div style="text-align:center;padding:32px;color:var(--muted);background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);">No flagged claims — all submissions look genuine.</div>
+            {% endif %}
+        </div>
+    </div>
+
 {% endblock %}
 
 {% block scripts %}

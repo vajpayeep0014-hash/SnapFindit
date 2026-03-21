@@ -1,4 +1,6 @@
 import os
+import json
+import requests
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -23,6 +25,8 @@ cloudinary.config(
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN     = '@medicaps.ac.in'
 ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
+GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -49,35 +53,153 @@ class User(db.Model):
 
 
 class Item(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    name         = db.Column(db.String(120), nullable=False)
-    location     = db.Column(db.String(200), nullable=False)
-    block        = db.Column(db.String(50), nullable=True)   # 'V Block' or 'Other'
-    category     = db.Column(db.String(50), nullable=False, default='Generic')
-    description  = db.Column(db.Text)
-    image_file   = db.Column(db.String(500), nullable=False)
-    claimed      = db.Column(db.Boolean, default=False)
-    pending      = db.Column(db.Boolean, default=False)      # True when claim request submitted
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    reporter_id  = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    claimer_id   = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    claimed_at   = db.Column(db.DateTime, nullable=True)
+    id             = db.Column(db.Integer, primary_key=True)
+    name           = db.Column(db.String(120), nullable=False)
+    location       = db.Column(db.String(200), nullable=False)
+    block          = db.Column(db.String(50), nullable=True)
+    category       = db.Column(db.String(50), nullable=False, default='Generic')
+    description    = db.Column(db.Text)
+    image_file     = db.Column(db.String(500), nullable=False)
+    claimed        = db.Column(db.Boolean, default=False)
+    pending        = db.Column(db.Boolean, default=False)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    reporter_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    claimer_id     = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    claimed_at     = db.Column(db.DateTime, nullable=True)
     claim_requests = db.relationship('ClaimRequest', backref='item', lazy=True)
 
 
 class ClaimRequest(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    item_id      = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
-    claimant_id  = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    phone        = db.Column(db.String(20), nullable=False)   # Q1: contact number
-    when_where   = db.Column(db.Text, nullable=False)         # Q2: when/where did you lose it
-    proof_photo  = db.Column(db.String(500), nullable=True)   # optional photo proof
-    status       = db.Column(db.String(20), default='pending')  # pending / approved / rejected
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    claimant     = db.relationship('User', backref='claim_requests')
+    id          = db.Column(db.Integer, primary_key=True)
+    item_id     = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
+    claimant_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    phone       = db.Column(db.String(20), nullable=False)
+    when_where  = db.Column(db.Text, nullable=False)
+    proof_photo = db.Column(db.String(500), nullable=True)
+    status      = db.Column(db.String(20), default='pending')
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    claimant    = db.relationship('User', backref='claim_requests')
 
 
-# ─── Helpers ───────────────────────────────────────────────────────────────────
+class FlaggedItem(db.Model):
+    """Finder posts flagged as spam by AI — admin reviews here."""
+    id          = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.String(120), nullable=False)
+    location    = db.Column(db.String(200), nullable=False)
+    block       = db.Column(db.String(50), nullable=True)
+    category    = db.Column(db.String(50), nullable=False, default='Generic')
+    description = db.Column(db.Text)
+    image_file  = db.Column(db.String(500), nullable=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    ai_reason   = db.Column(db.Text)
+    status      = db.Column(db.String(20), default='flagged')  # flagged/approved/deleted
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    reporter    = db.relationship('User', backref='flagged_items')
+
+
+class FlaggedClaim(db.Model):
+    """Claim requests flagged as spam by AI — admin reviews here."""
+    id          = db.Column(db.Integer, primary_key=True)
+    item_id     = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
+    claimant_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    phone       = db.Column(db.String(20), nullable=False)
+    when_where  = db.Column(db.Text, nullable=False)
+    proof_photo = db.Column(db.String(500), nullable=True)
+    ai_reason   = db.Column(db.Text)
+    status      = db.Column(db.String(20), default='flagged')  # flagged/approved/deleted
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    item        = db.relationship('Item', backref='flagged_claims')
+    claimant    = db.relationship('User', backref='flagged_claims')
+
+
+# ─── Gemini helpers ────────────────────────────────────────────────────────────
+
+def _gemini(prompt):
+    """Raw Gemini call — returns text or raises."""
+    resp = requests.post(
+        f'{GEMINI_URL}?key={GEMINI_API_KEY}',
+        json={'contents': [{'parts': [{'text': prompt}]}]},
+        timeout=10
+    )
+    return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+
+
+def _parse_json(text):
+    """Strip markdown fences and parse JSON."""
+    if '```' in text:
+        text = text.split('```')[1]
+        if text.startswith('json'):
+            text = text[4:]
+    return json.loads(text.strip())
+
+
+def check_item_spam(name, location, description):
+    if not GEMINI_API_KEY:
+        return {'flagged': False, 'reason': ''}
+    try:
+        prompt = f"""You are a spam filter for Medicaps University Lost & Found (SnapFind).
+Decide if this found item report is spam, fake, or gibberish.
+
+Item name: {name}
+Location: {location}
+Description: {description}
+
+Flag if: name/location is gibberish, offensive, clearly fake, or a test entry like "asdf", "test123".
+Do NOT flag: short but real descriptions, common items, incomplete descriptions.
+
+Reply ONLY with JSON (no markdown):
+{{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
+        data = _parse_json(_gemini(prompt))
+        return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
+    except Exception:
+        return {'flagged': False, 'reason': ''}
+
+
+def check_claim_spam(item_name, when_where):
+    if not GEMINI_API_KEY:
+        return {'flagged': False, 'reason': ''}
+    try:
+        prompt = f"""You are a fraud filter for Medicaps University Lost & Found (SnapFind).
+Decide if this claim request looks fake or spam.
+
+Item being claimed: {item_name}
+Claimer says they lost it: {when_where}
+
+Flag if: the when/where is gibberish, totally nonsensical, or obvious spam (e.g. "idk", "asdf", "abc").
+Do NOT flag: short but plausible answers like "yesterday near canteen" or "Monday in library".
+
+Reply ONLY with JSON (no markdown):
+{{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
+        data = _parse_json(_gemini(prompt))
+        return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
+    except Exception:
+        return {'flagged': False, 'reason': ''}
+
+
+def gemini_chat(message):
+    if not GEMINI_API_KEY:
+        return "The chatbot isn't configured yet. Please contact the admin at Room 114, V Block."
+    try:
+        prompt = f"""You are SnapFind Assistant, the helpful chatbot for Medicaps University's Lost & Found system.
+
+Key facts about SnapFind:
+- Students report found items on SnapFind, then physically submit them to Room 114, V Block (if found near V Block) or the Guard Room (elsewhere)
+- Students who lost something browse listings and click "This is mine" to submit a claim
+- Claims include: phone number, when/where they lost the item, optional photo proof
+- Admin at Room 114 reviews all claims and verifies in person
+- If approved, the student collects from Room 114, V Block or the Guard Room
+- Only @medicaps.ac.in email addresses can register
+- Electronics photos are blurred for privacy
+
+Answer helpfully and concisely. Only answer questions related to lost & found. If unrelated, politely redirect.
+
+Student: {message}"""
+        return _gemini(prompt)
+    except Exception:
+        return "Sorry, I'm having trouble right now. Please visit Room 114, V Block for help."
+
+
+# ─── Auth helpers ───────────────────────────────────────────────────────────────
 
 def login_required(f):
     @wraps(f)
@@ -142,7 +264,6 @@ def register():
         phone    = request.form.get('phone', '').strip()
         password = request.form.get('password', '')
         confirm  = request.form.get('confirm', '')
-
         if not email.endswith(COLLEGE_DOMAIN):
             flash(f'Only {COLLEGE_DOMAIN} emails are accepted.', 'danger')
             return render_template('register.html')
@@ -155,7 +276,6 @@ def register():
         if User.query.filter_by(email=email).first():
             flash('An account with this email already exists.', 'danger')
             return render_template('register.html')
-
         user = User(
             email    = email,
             name     = name,
@@ -201,14 +321,14 @@ def my_claims():
                            user=user)
 
 
-# ─── Upload (finder posts item) ────────────────────────────────────────────────
+# ─── Upload ────────────────────────────────────────────────────────────────────
 
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_item():
     name        = request.form.get('name', '').strip()
     location    = request.form.get('location', '').strip()
-    block       = request.form.get('block', 'Other')           # 'V Block' or 'Other'
+    block       = request.form.get('block', 'Other')
     category    = request.form.get('category', 'Generic')
     description = request.form.get('description', '').strip()
 
@@ -232,84 +352,98 @@ def upload_item():
         return redirect(url_for('index'))
 
     user = current_user()
-    item = Item(
-        name        = name,
-        location    = location,
-        block       = block,
-        category    = category,
-        description = description,
-        image_file  = image_url,
-        reporter_id = user.id,
-    )
-    db.session.add(item)
+
+    # ── AI spam check ──
+    ai = check_item_spam(name, location, description)
+    if ai['flagged']:
+        db.session.add(FlaggedItem(
+            name=name, location=location, block=block, category=category,
+            description=description, image_file=image_url,
+            reporter_id=user.id, ai_reason=ai['reason']
+        ))
+        db.session.commit()
+        flash('Your post was flagged for review. If it is genuine, admin will approve it shortly.', 'warning')
+        return redirect(url_for('index'))
+
+    db.session.add(Item(
+        name=name, location=location, block=block, category=category,
+        description=description, image_file=image_url, reporter_id=user.id
+    ))
     db.session.commit()
 
-    # Tell finder where to physically submit
-    if block == 'V Block':
-        flash('Item posted! Please physically submit it to Room 114, V Block.', 'success')
-    else:
-        flash('Item posted! Please physically submit it to the Guard Room.', 'success')
-
+    pickup = 'Room 114, V Block' if block == 'V Block' else 'the Guard Room'
+    flash(f'Item posted! Please physically submit it to {pickup}.', 'success')
     return redirect(url_for('index'))
 
 
-# ─── Claim request (loser submits claim) ───────────────────────────────────────
+# ─── Claim request ─────────────────────────────────────────────────────────────
 
 @app.route('/claim/<int:item_id>', methods=['POST'])
 @login_required
 def submit_claim(item_id):
-    item     = Item.query.get_or_404(item_id)
-    user     = current_user()
-    is_ajax  = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    item    = Item.query.get_or_404(item_id)
+    user    = current_user()
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def respond(success, msg):
+        if is_ajax:
+            return jsonify({'success': success, 'message': msg})
+        flash(msg, 'success' if success else ('warning' if not success else 'danger'))
+        return redirect(url_for('index'))
 
     if item.claimed:
-        msg = 'This item has already been returned to its owner.'
-        return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'warning'), redirect(url_for('index')))[1]
-
+        return respond(False, 'This item has already been returned to its owner.')
     if item.pending:
-        msg = 'A claim is already pending admin review for this item.'
-        return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'warning'), redirect(url_for('index')))[1]
-
-    # Check if this user already submitted a claim for this item
-    existing = ClaimRequest.query.filter_by(item_id=item_id, claimant_id=user.id, status='pending').first()
-    if existing:
-        msg = 'You have already submitted a claim for this item.'
-        return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'warning'), redirect(url_for('index')))[1]
+        return respond(False, 'A claim is already pending admin review for this item.')
+    if ClaimRequest.query.filter_by(item_id=item_id, claimant_id=user.id, status='pending').first():
+        return respond(False, 'You have already submitted a claim for this item.')
 
     phone      = request.form.get('phone', '').strip()
     when_where = request.form.get('when_where', '').strip()
-
     if not phone or not when_where:
-        msg = 'Please fill in all required fields.'
-        return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'danger'), redirect(url_for('index')))[1]
+        return respond(False, 'Please fill in all required fields.')
 
-    # Optional proof photo upload
+    # Optional proof photo
     proof_photo_url = None
     proof_file = request.files.get('proof_photo')
     if proof_file and proof_file.filename and allowed_file(proof_file.filename):
         try:
-            result = cloudinary.uploader.upload(proof_file, format='jpg', transformation=[{'quality': 'auto'}])
-            proof_photo_url = result['secure_url']
+            r = cloudinary.uploader.upload(proof_file, format='jpg', transformation=[{'quality': 'auto'}])
+            proof_photo_url = r['secure_url']
         except Exception:
-            pass  # photo is optional, silently skip on failure
+            pass
 
-    claim = ClaimRequest(
-        item_id     = item.id,
-        claimant_id = user.id,
-        phone       = phone,
-        when_where  = when_where,
-        proof_photo = proof_photo_url,
-    )
+    # ── AI spam check ──
+    ai = check_claim_spam(item.name, when_where)
+    if ai['flagged']:
+        db.session.add(FlaggedClaim(
+            item_id=item.id, claimant_id=user.id, phone=phone,
+            when_where=when_where, proof_photo=proof_photo_url, ai_reason=ai['reason']
+        ))
+        db.session.commit()
+        return respond(False, 'Please provide more specific details about when and where you lost the item.')
+
+    db.session.add(ClaimRequest(
+        item_id=item.id, claimant_id=user.id,
+        phone=phone, when_where=when_where, proof_photo=proof_photo_url
+    ))
     item.pending = True
-    db.session.add(claim)
     db.session.commit()
 
-    if item.block == 'V Block':
-        pickup = 'Room 114, V Block'
-    else:
-        pickup = 'the Guard Room'
-    msg = f'Claim submitted! If approved, go collect your item from {pickup}.'
-    return jsonify({'success': True, 'message': msg}) if is_ajax else (flash(msg, 'success'), redirect(url_for('index')))[1]
+    pickup = 'Room 114, V Block' if item.block == 'V Block' else 'the Guard Room'
+    return respond(True, f'Claim submitted! If approved, collect your item from {pickup}.')
+
+
+# ─── Chatbot ───────────────────────────────────────────────────────────────────
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def chat():
+    data    = request.get_json()
+    message = (data or {}).get('message', '').strip()
+    if not message:
+        return jsonify({'reply': 'Please type a message.'})
+    return jsonify({'reply': gemini_chat(message)})
 
 
 # ─── Admin routes ───────────────────────────────────────────────────────────────
@@ -321,56 +455,102 @@ def admin():
     all_items      = Item.query.order_by(Item.id.desc()).all()
     all_users      = User.query.order_by(User.created_at.desc()).all()
     claim_requests = ClaimRequest.query.filter_by(status='pending').order_by(ClaimRequest.created_at.desc()).all()
+    flagged_items  = FlaggedItem.query.filter_by(status='flagged').order_by(FlaggedItem.created_at.desc()).all()
+    flagged_claims = FlaggedClaim.query.filter_by(status='flagged').order_by(FlaggedClaim.created_at.desc()).all()
     active         = Item.query.filter_by(claimed=False).count()
     claimed        = Item.query.filter_by(claimed=True).count()
     user_count     = User.query.count()
     pending_count  = ClaimRequest.query.filter_by(status='pending').count()
+    flagged_count  = (FlaggedItem.query.filter_by(status='flagged').count() +
+                      FlaggedClaim.query.filter_by(status='flagged').count())
     return render_template('admin.html',
                            items=all_items, users=all_users,
                            claim_requests=claim_requests,
+                           flagged_items=flagged_items,
+                           flagged_claims=flagged_claims,
                            active=active, claimed=claimed,
                            user_count=user_count,
                            pending_count=pending_count,
+                           flagged_count=flagged_count,
                            user=user)
 
 
 @app.route('/admin/claim/approve/<int:claim_id>', methods=['POST'])
 @admin_required
 def approve_claim(claim_id):
-    claim   = ClaimRequest.query.get_or_404(claim_id)
-    item    = claim.item
-    claimer = claim.claimant
-
-    item.claimed    = True
-    item.pending    = False
-    item.claimer_id = claimer.id
-    item.claimed_at = datetime.utcnow()
-    claim.status    = 'approved'
-
-    # Reject all other pending claims for the same item
-    other_claims = ClaimRequest.query.filter_by(item_id=item.id, status='pending').all()
-    for c in other_claims:
+    claim = ClaimRequest.query.get_or_404(claim_id)
+    item  = claim.item
+    item.claimed = True; item.pending = False
+    item.claimer_id = claim.claimant_id; item.claimed_at = datetime.utcnow()
+    claim.status = 'approved'
+    for c in ClaimRequest.query.filter_by(item_id=item.id, status='pending').all():
         c.status = 'rejected'
-
     db.session.commit()
-    flash(f'Claim approved. "{item.name}" marked as returned to {claimer.name}.', 'success')
+    flash(f'Claim approved. "{item.name}" marked as returned to {claim.claimant.name}.', 'success')
     return redirect(url_for('admin'))
 
 
 @app.route('/admin/claim/reject/<int:claim_id>', methods=['POST'])
 @admin_required
 def reject_claim(claim_id):
-    claim      = ClaimRequest.query.get_or_404(claim_id)
-    item       = claim.item
+    claim = ClaimRequest.query.get_or_404(claim_id)
     claim.status = 'rejected'
-
-    # If no more pending claims, unset item.pending
-    remaining = ClaimRequest.query.filter_by(item_id=item.id, status='pending').count()
-    if remaining == 0:
-        item.pending = False
-
+    if ClaimRequest.query.filter_by(item_id=claim.item_id, status='pending').count() == 0:
+        claim.item.pending = False
     db.session.commit()
     flash('Claim rejected.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/flagged-item/approve/<int:fid>', methods=['POST'])
+@admin_required
+def approve_flagged_item(fid):
+    fi = FlaggedItem.query.get_or_404(fid)
+    db.session.add(Item(
+        name=fi.name, location=fi.location, block=fi.block,
+        category=fi.category, description=fi.description,
+        image_file=fi.image_file or '', reporter_id=fi.reporter_id
+    ))
+    fi.status = 'approved'
+    db.session.commit()
+    flash(f'"{fi.name}" approved and moved to live listings.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/flagged-item/delete/<int:fid>', methods=['POST'])
+@admin_required
+def delete_flagged_item(fid):
+    FlaggedItem.query.get_or_404(fid).status = 'deleted'
+    db.session.commit()
+    flash('Flagged item deleted.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/flagged-claim/approve/<int:fid>', methods=['POST'])
+@admin_required
+def approve_flagged_claim(fid):
+    fc   = FlaggedClaim.query.get_or_404(fid)
+    item = Item.query.get(fc.item_id)
+    if not item:
+        flash('Item no longer exists.', 'danger')
+        return redirect(url_for('admin'))
+    db.session.add(ClaimRequest(
+        item_id=fc.item_id, claimant_id=fc.claimant_id,
+        phone=fc.phone, when_where=fc.when_where, proof_photo=fc.proof_photo
+    ))
+    item.pending = True
+    fc.status    = 'approved'
+    db.session.commit()
+    flash('Flagged claim approved and moved to pending claims.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/flagged-claim/delete/<int:fid>', methods=['POST'])
+@admin_required
+def delete_flagged_claim(fid):
+    FlaggedClaim.query.get_or_404(fid).status = 'deleted'
+    db.session.commit()
+    flash('Flagged claim deleted.', 'success')
     return redirect(url_for('admin'))
 
 
@@ -378,7 +558,6 @@ def reject_claim(claim_id):
 @admin_required
 def admin_delete(item_id):
     item = Item.query.get_or_404(item_id)
-    # Delete associated claim requests first
     ClaimRequest.query.filter_by(item_id=item_id).delete()
     db.session.delete(item)
     db.session.commit()
@@ -389,11 +568,9 @@ def admin_delete(item_id):
 @app.route('/admin/unclaim/<int:item_id>', methods=['POST'])
 @admin_required
 def admin_unclaim(item_id):
-    item            = Item.query.get_or_404(item_id)
-    item.claimed    = False
-    item.pending    = False
-    item.claimer_id = None
-    item.claimed_at = None
+    item = Item.query.get_or_404(item_id)
+    item.claimed = False; item.pending = False
+    item.claimer_id = None; item.claimed_at = None
     db.session.commit()
     flash('Item marked as unclaimed.', 'success')
     return redirect(url_for('admin'))
@@ -402,14 +579,12 @@ def admin_unclaim(item_id):
 @app.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])
 @admin_required
 def toggle_admin(user_id):
-    user          = User.query.get_or_404(user_id)
+    user = User.query.get_or_404(user_id)
     user.is_admin = not user.is_admin
     db.session.commit()
     flash(f"{'Granted' if user.is_admin else 'Removed'} admin for {user.email}", 'success')
     return redirect(url_for('admin'))
 
-
-# ─── API ────────────────────────────────────────────────────────────────────────
 
 @app.route('/api/stats')
 def stats():
@@ -424,13 +599,12 @@ def stats():
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(email='admin@medicaps.ac.in').first():
-        admin_user = User(
+        db.session.add(User(
             email    = 'admin@medicaps.ac.in',
             name     = 'Campus Admin',
             password = generate_password_hash('admin123'),
             is_admin = True
-        )
-        db.session.add(admin_user)
+        ))
         db.session.commit()
 
 if __name__ == '__main__':
