@@ -318,19 +318,32 @@
         e.preventDefault();
         const form     = e.target;
         const resultEl = document.getElementById('claim-result-' + itemId);
+        const submitBtn = form.querySelector('button[type="submit"]');
         const formData = new FormData(form);
 
-        const res  = await fetch('/claim/' + itemId, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
-        });
-        const json = await res.json();
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Verifying with AI…';
 
-        resultEl.textContent   = json.message;
-        resultEl.className     = 'alert ' + (json.success ? 'alert-success' : 'alert-danger');
-        resultEl.style.display = 'block';
-        if (json.success) { form.reset(); setTimeout(()=>location.reload(), 2500); }
+        try {
+            const res  = await fetch('/claim/' + itemId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const json = await res.json();
+            resultEl.textContent   = json.message;
+            resultEl.className     = 'alert ' + (json.success ? 'alert-success' : 'alert-danger');
+            resultEl.style.display = 'block';
+            if (json.success) { form.reset(); setTimeout(()=>location.reload(), 2500); }
+        } catch(err) {
+            resultEl.textContent   = 'Network error. Please try again.';
+            resultEl.className     = 'alert alert-danger';
+            resultEl.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Claim';
+        }
     }
 
     function previewProof(input, itemId) {

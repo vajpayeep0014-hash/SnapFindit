@@ -119,7 +119,7 @@ def _gemini(prompt):
     resp = requests.post(
         f'{GEMINI_URL}?key={GEMINI_API_KEY}',
         json={'contents': [{'parts': [{'text': prompt}]}]},
-        timeout=10
+        timeout=(3, 5)
     )
     return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
 
