@@ -69,10 +69,9 @@ class ClaimRequest(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     item_id      = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
     claimant_id  = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # Details submitted by claimer
-    why_mine     = db.Column(db.Text, nullable=False)        # why they think it's theirs
-    proof_desc   = db.Column(db.Text, nullable=False)        # description of item as proof
-    phone        = db.Column(db.String(20), nullable=False)  # contact number
+    phone        = db.Column(db.String(20), nullable=False)   # Q1: contact number
+    when_where   = db.Column(db.Text, nullable=False)         # Q2: when/where did you lose it
+    proof_photo  = db.Column(db.String(500), nullable=True)   # optional photo proof
     status       = db.Column(db.String(20), default='pending')  # pending / approved / rejected
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     claimant     = db.relationship('User', backref='claim_requests')
@@ -247,7 +246,7 @@ def upload_item():
 
     # Tell finder where to physically submit
     if block == 'V Block':
-        flash('Item posted! Please physically submit it to Room 115, V Block.', 'success')
+        flash('Item posted! Please physically submit it to Room 114, V Block.', 'success')
     else:
         flash('Item posted! Please physically submit it to the Guard Room.', 'success')
 
@@ -277,26 +276,39 @@ def submit_claim(item_id):
         msg = 'You have already submitted a claim for this item.'
         return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'warning'), redirect(url_for('index')))[1]
 
-    why_mine   = request.form.get('why_mine', '').strip()
-    proof_desc = request.form.get('proof_desc', '').strip()
     phone      = request.form.get('phone', '').strip()
+    when_where = request.form.get('when_where', '').strip()
 
-    if not why_mine or not proof_desc or not phone:
-        msg = 'Please fill in all fields.'
+    if not phone or not when_where:
+        msg = 'Please fill in all required fields.'
         return jsonify({'success': False, 'message': msg}) if is_ajax else (flash(msg, 'danger'), redirect(url_for('index')))[1]
+
+    # Optional proof photo upload
+    proof_photo_url = None
+    proof_file = request.files.get('proof_photo')
+    if proof_file and proof_file.filename and allowed_file(proof_file.filename):
+        try:
+            result = cloudinary.uploader.upload(proof_file, format='jpg', transformation=[{'quality': 'auto'}])
+            proof_photo_url = result['secure_url']
+        except Exception:
+            pass  # photo is optional, silently skip on failure
 
     claim = ClaimRequest(
         item_id     = item.id,
         claimant_id = user.id,
-        why_mine    = why_mine,
-        proof_desc  = proof_desc,
         phone       = phone,
+        when_where  = when_where,
+        proof_photo = proof_photo_url,
     )
     item.pending = True
     db.session.add(claim)
     db.session.commit()
 
-    msg = 'Claim submitted! The admin at Room 115 will verify and contact you.'
+    if item.block == 'V Block':
+        pickup = 'Room 114, V Block'
+    else:
+        pickup = 'the Guard Room'
+    msg = f'Claim submitted! If approved, go collect your item from {pickup}.'
     return jsonify({'success': True, 'message': msg}) if is_ajax else (flash(msg, 'success'), redirect(url_for('index')))[1]
 
 

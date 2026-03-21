@@ -76,16 +76,16 @@
             <div class="claim-card-info">
                 <div class="claim-card-name">{{ cr.item.name }}</div>
                 <div class="claim-card-detail">📍 {{ cr.item.location }}</div>
-                <div class="claim-card-detail" style="margin-top:4px;font-style:italic;">{{ cr.why_mine }}</div>
+                <div class="claim-card-detail" style="margin-top:4px;font-style:italic;">Lost: {{ cr.when_where }}</div>
                 <div class="claim-card-date">Submitted {{ cr.created_at.strftime('%d %b %Y') }}</div>
             </div>
             <div>
                 {% if cr.status == 'pending' %}
                 <span class="sbadge sbadge-pending">⏳ Pending</span>
-                <div style="font-size:.75rem;color:var(--muted);margin-top:6px;max-width:160px;line-height:1.5;">Admin at Room 115 will contact you at {{ cr.phone }}</div>
+                <div style="font-size:.75rem;color:var(--muted);margin-top:6px;max-width:160px;line-height:1.5;">Admin at Room 114 will contact you at {{ cr.phone }}</div>
                 {% elif cr.status == 'approved' %}
                 <span class="sbadge sbadge-approved">✓ Approved</span>
-                <div style="font-size:.75rem;color:var(--success);margin-top:6px;">Go collect from Room 115, V Block</div>
+                <div style="font-size:.75rem;color:var(--success);margin-top:6px;">Go collect from Room 114, V Block</div>
                 {% else %}
                 <span class="sbadge sbadge-rejected">✗ Rejected</span>
                 {% endif %}

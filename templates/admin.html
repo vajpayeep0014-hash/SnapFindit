@@ -64,7 +64,7 @@
 
 <div class="adm-hero">
     <h1>Admin Panel</h1>
-    <p>Logged in as {{ user.email }} · Room 115, V Block</p>
+    <p>Logged in as {{ user.email }} · Room 114, V Block</p>
     <div class="kpi-row">
         <div class="kpi"><strong>{{ active }}</strong><span>Active</span></div>
         <div class="kpi"><strong>{{ claimed }}</strong><span>Returned</span></div>
@@ -91,11 +91,12 @@
             <thead>
                 <tr>
                     <th>Item</th>
-                    <th>Photo</th>
+                    <th>Item Photo</th>
                     <th>Claimer</th>
-                    <th>Contact</th>
-                    <th>Why theirs?</th>
-                    <th>Item Description</th>
+                    <th>Phone</th>
+                    <th>When / Where lost?</th>
+                    <th>Proof Photo</th>
+                    <th>Pickup</th>
                     <th>Submitted</th>
                     <th>Actions</th>
                 </tr>
@@ -114,14 +115,19 @@
                         {{ cr.claimant.email }}
                     </div>
                 </td>
+                <td><div class="claim-detail">📞 {{ cr.phone }}</div></td>
+                <td style="max-width:200px;"><div class="claim-detail">{{ cr.when_where }}</div></td>
                 <td>
-                    <div class="claim-detail">📞 {{ cr.phone }}</div>
+                    {% if cr.proof_photo %}
+                    <img src="{{ cr.proof_photo }}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" onclick="window.open('{{ cr.proof_photo }}','_blank')" title="Click to view full size">
+                    {% else %}
+                    <span style="font-size:.75rem;color:var(--faint);">None</span>
+                    {% endif %}
                 </td>
-                <td style="max-width:180px;">
-                    <div class="claim-detail">{{ cr.why_mine }}</div>
-                </td>
-                <td style="max-width:200px;">
-                    <div class="claim-detail">{{ cr.proof_desc }}</div>
+                <td>
+                    <span style="font-size:.75rem;color:var(--accent2);font-weight:500;">
+                        {% if cr.item.block == 'V Block' %}Room 114, V Block{% else %}Guard Room{% endif %}
+                    </span>
                 </td>
                 <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ cr.created_at.strftime('%d %b %Y') }}</td>
                 <td>

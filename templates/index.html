@@ -145,21 +145,27 @@
             </div>
             <div class="modal-body">
                 <div style="background:var(--accent-dim);border:1px solid rgba(0,212,255,.2);border-radius:var(--radius);padding:12px 14px;margin-bottom:18px;font-size:.82rem;color:var(--accent2);line-height:1.6;">
-                    📋 Your claim will be reviewed by the admin at <strong>Room 115, V Block</strong>. They will contact you to verify in person.
+                    📋 Your claim will be reviewed by the admin. If approved, go collect your item from <strong>Room 114, V Block</strong> or the <strong>Guard Room</strong> depending on where it was found.
                 </div>
                 <div id="claim-result-{{ item.id }}" class="alert" style="display:none;"></div>
-                <form onsubmit="handleClaim(event, {{ item.id }})">
-                    <div class="form-group">
-                        <label>Why is this yours?</label>
-                        <input type="text" name="why_mine" placeholder="e.g. I lost it near the library on Monday" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Describe the item (as proof)</label>
-                        <input type="text" name="proof_desc" placeholder="e.g. Black case, cracked screen on top-right, sticker on back" required>
-                    </div>
+                <form onsubmit="handleClaim(event, {{ item.id }})" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>Your Phone Number</label>
                         <input type="tel" name="phone" placeholder="e.g. 9876543210" required>
+                    </div>
+                    <div class="form-group">
+                        <label>When / Where did you lose this item?</label>
+                        <input type="text" name="when_where" placeholder="e.g. Monday afternoon near the V Block canteen" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Photo proof <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                        <div style="display:flex;gap:8px;margin-bottom:8px;">
+                            <label class="file-label" for="proofGallery{{ item.id }}" style="flex:1;margin:0;padding:10px;font-size:.8rem;">🖼 Gallery</label>
+                            <label class="file-label" for="proofCamera{{ item.id }}" style="flex:1;margin:0;padding:10px;font-size:.8rem;">📷 Camera</label>
+                        </div>
+                        <input type="file" name="proof_photo" id="proofGallery{{ item.id }}" accept="image/*" onchange="previewProof(this,{{ item.id }})" style="display:none;">
+                        <input type="file" id="proofCamera{{ item.id }}" accept="image/*" capture="environment" onchange="syncProofCamera(this,{{ item.id }})" style="display:none;">
+                        <img id="proofPreview{{ item.id }}" alt="Proof preview" style="width:100%;margin-top:8px;display:none;border-radius:var(--radius);border:1px solid var(--border2);">
                     </div>
                     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                         <button type="button" class="btn btn-ghost" onclick="closeModal('claimModal{{ item.id }}')">Cancel</button>
@@ -214,7 +220,7 @@
 
                 <!-- Dynamic submission banner -->
                 <div class="submit-banner show" id="submitBanner">
-                    📍 Please physically submit this item to <strong>Room 115, V Block</strong> after posting.
+                    📍 Please physically submit this item to <strong>Room 114, V Block</strong> after posting.
                 </div>
 
                 <div class="form-group">
@@ -262,7 +268,7 @@
         const val    = document.getElementById('blockSelect').value;
         const banner = document.getElementById('submitBanner');
         if (val === 'V Block') {
-            banner.innerHTML = '📍 Please physically submit this item to <strong>Room 115, V Block</strong> after posting.';
+            banner.innerHTML = '📍 Please physically submit this item to <strong>Room 114, V Block</strong> after posting.';
         } else {
             banner.innerHTML = '📍 Please physically submit this item to the <strong>Guard Room</strong> after posting.';
         }
@@ -312,23 +318,31 @@
         e.preventDefault();
         const form     = e.target;
         const resultEl = document.getElementById('claim-result-' + itemId);
-        const data     = new FormData(form);
+        const formData = new FormData(form);
 
         const res  = await fetch('/claim/' + itemId, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: new URLSearchParams({
-                why_mine:   data.get('why_mine'),
-                proof_desc: data.get('proof_desc'),
-                phone:      data.get('phone')
-            })
+            body: formData
         });
         const json = await res.json();
 
         resultEl.textContent   = json.message;
         resultEl.className     = 'alert ' + (json.success ? 'alert-success' : 'alert-danger');
         resultEl.style.display = 'block';
-        if (json.success) { form.reset(); setTimeout(()=>location.reload(), 2000); }
+        if (json.success) { form.reset(); setTimeout(()=>location.reload(), 2500); }
+    }
+
+    function previewProof(input, itemId) {
+        const img = document.getElementById('proofPreview' + itemId);
+        if (input.files && input.files[0]) { img.src = URL.createObjectURL(input.files[0]); img.style.display = 'block'; }
+    }
+    function syncProofCamera(input, itemId) {
+        if (input.files && input.files[0]) {
+            const dt = new DataTransfer(); dt.items.add(input.files[0]);
+            document.getElementById('proofGallery' + itemId).files = dt.files;
+            previewProof(input, itemId);
+        }
     }
 </script>
 {% endblock %}
