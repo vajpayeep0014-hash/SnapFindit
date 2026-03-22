@@ -1,5 +1,7 @@
 import os
 import json
+import base64
+import mimetypes
 import requests
 import cloudinary
 import cloudinary.uploader
@@ -129,7 +131,6 @@ def _gemini_vision(prompt_text, image_url):
     """Gemini vision call — fetch image and send as base64."""
     img_resp = requests.get(image_url, timeout=(3, 8))
     img_resp.raise_for_status()
-    import base64, mimetypes
     b64 = base64.b64encode(img_resp.content).decode('utf-8')
     mime = img_resp.headers.get('Content-Type', 'image/jpeg').split(';')[0]
     payload = {
