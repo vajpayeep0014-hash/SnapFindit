@@ -316,12 +316,21 @@
 
     async function handleClaim(e, itemId) {
         e.preventDefault();
-        const form     = e.target;
-        const resultEl = document.getElementById('claim-result-' + itemId);
+        const form      = e.target;
+        const resultEl  = document.getElementById('claim-result-' + itemId);
         const submitBtn = form.querySelector('button[type="submit"]');
-        const formData = new FormData(form);
 
-        // Show loading state
+        // Build FormData manually to ensure file is included
+        const formData = new FormData();
+        formData.append('phone',      form.querySelector('[name="phone"]').value);
+        formData.append('when_where', form.querySelector('[name="when_where"]').value);
+
+        // Explicitly grab file from the hidden input
+        const fileInput = document.getElementById('proofGallery' + itemId);
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            formData.append('proof_photo', fileInput.files[0]);
+        }
+
         submitBtn.disabled = true;
         submitBtn.textContent = '⏳ Verifying with AI…';
 
