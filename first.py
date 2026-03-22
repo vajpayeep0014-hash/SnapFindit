@@ -29,7 +29,7 @@ COLLEGE_DOMAIN     = '@medicaps.ac.in'
 ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
-GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -133,6 +133,8 @@ def _gemini_vision(prompt_text, image_url):
     img_resp.raise_for_status()
     b64 = base64.b64encode(img_resp.content).decode('utf-8')
     mime = img_resp.headers.get('Content-Type', 'image/jpeg').split(';')[0]
+    if not mime.startswith('image/'):
+        mime = 'image/jpeg'
     payload = {
         'contents': [{
             'parts': [
@@ -141,12 +143,17 @@ def _gemini_vision(prompt_text, image_url):
             ]
         }]
     }
+    vision_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
     resp = requests.post(
-        f'{GEMINI_URL}?key={GEMINI_API_KEY}',
+        f'{vision_url}?key={GEMINI_API_KEY}',
         json=payload,
         timeout=(3, 10)
     )
-    return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+    resp_json = resp.json()
+    if 'candidates' not in resp_json:
+        app.logger.error(f'GEMINI_VISION: bad response → {resp_json}')
+        raise ValueError(f'No candidates in response: {resp_json}')
+    return resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
 
 
 def _parse_json(text):
