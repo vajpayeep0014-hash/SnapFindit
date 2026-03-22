@@ -29,7 +29,7 @@ COLLEGE_DOMAIN     = '@medicaps.ac.in'
 ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
-GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -143,7 +143,7 @@ def _gemini_vision(prompt_text, image_url):
             ]
         }]
     }
-    vision_url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+    vision_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
     resp = requests.post(
         f'{vision_url}?key={GEMINI_API_KEY}',
         json=payload,
