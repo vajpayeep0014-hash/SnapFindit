@@ -128,29 +128,8 @@ def _gemini(prompt):
 
 
 def _cloudinary_categorize(image_url):
-    """Use Cloudinary AI categorization to get image labels."""
-    try:
-        # Extract public_id from Cloudinary URL
-        # URL format: https://res.cloudinary.com/cloud/image/upload/v123/public_id.jpg
-        public_id = image_url.split('/upload/')[-1]
-        if '.' in public_id:
-            public_id = public_id.rsplit('.', 1)[0]
-        # Remove version prefix if present (v1234567/)
-        if public_id.startswith('v') and '/' in public_id:
-            public_id = public_id.split('/', 1)[1]
-
-        result = cloudinary.uploader.explicit(
-            public_id,
-            type='upload',
-            categorization='google_tagging',
-            auto_tagging=0.6
-        )
-        tags = result.get('tags', [])
-        app.logger.info(f'CLOUDINARY_TAGS: {tags}')
-        return tags
-    except Exception as e:
-        app.logger.error(f'CLOUDINARY_CATEGORIZE error: {e}')
-        return []
+    """Legacy — kept for compatibility. Tags now captured at upload time."""
+    return []
 
 
 def _parse_json(text):
@@ -184,13 +163,12 @@ Reply ONLY with JSON (no markdown):
         return {'flagged': False, 'reason': ''}
 
 
-def check_photo_matches_item(item_name, proof_photo_url):
-    """Use Cloudinary AI tagging to check if proof photo matches the item name."""
+def check_photo_matches_item(item_name, proof_photo_url, tags=None):
+    """Use Cloudinary AI tags to check if proof photo matches the item name."""
     if not proof_photo_url:
         app.logger.warning('PHOTO_CHECK: skipped -- proof_photo_url is None')
         return {'flagged': False, 'reason': ''}
     try:
-        tags = _cloudinary_categorize(proof_photo_url)
         if not tags:
             app.logger.warning('PHOTO_CHECK: no tags returned, skipping')
             return {'flagged': False, 'reason': ''}
@@ -483,13 +461,24 @@ def submit_claim(item_id):
 
     # Optional proof photo
     proof_photo_url = None
+    proof_tags      = []
     proof_file = request.files.get('proof_photo')
     app.logger.info(f'CLAIM_PHOTO: file={proof_file}, filename={proof_file.filename if proof_file else None}')
     if proof_file and proof_file.filename and allowed_file(proof_file.filename):
         try:
-            r = cloudinary.uploader.upload(proof_file, format='jpg', transformation=[{'quality': 'auto'}])
+            r = cloudinary.uploader.upload(
+                proof_file,
+                format='jpg',
+                transformation=[{'quality': 'auto'}],
+                categorization='google_tagging',
+                auto_tagging=0.5
+            )
             proof_photo_url = r['secure_url']
-            app.logger.info(f'CLAIM_PHOTO: uploaded OK → {proof_photo_url}')
+            # Extract tags from upload response
+            info = r.get('info', {})
+            cat  = info.get('categorization', {}).get('google_tagging', {})
+            proof_tags = [c['tag'] for c in cat.get('data', []) if c.get('confidence', 0) >= 0.5]
+            app.logger.info(f'CLAIM_PHOTO: uploaded OK → tags={proof_tags}')
         except Exception as e:
             app.logger.error(f'CLAIM_PHOTO: upload failed → {e}')
     else:
@@ -507,7 +496,7 @@ def submit_claim(item_id):
 
     # ── AI spam check: photo (if uploaded) ──
     if proof_photo_url:
-        photo_check = check_photo_matches_item(item.name, proof_photo_url)
+        photo_check = check_photo_matches_item(item.name, proof_photo_url, tags=proof_tags)
         if photo_check['flagged']:
             db.session.add(FlaggedClaim(
                 item_id=item.id, claimant_id=user.id, phone=phone,
