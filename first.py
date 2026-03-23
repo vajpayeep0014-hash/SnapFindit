@@ -30,6 +30,8 @@ ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+GROQ_API_KEY       = os.environ.get('GROQ_API_KEY', '')
+GROQ_URL           = 'https://api.groq.com/openai/v1/chat/completions'
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -233,10 +235,11 @@ Reply ONLY with JSON (no markdown):
 
 
 def gemini_chat(message):
-    if not GEMINI_API_KEY:
+    """Chatbot using Groq (Llama 3) — fast and free."""
+    if not GROQ_API_KEY:
         return "The chatbot isn't configured yet. Please contact the admin at Room 114, V Block."
     try:
-        prompt = f"""You are SnapFind Assistant, the helpful chatbot for Medicaps University's Lost & Found system.
+        system = """You are SnapFind Assistant, the helpful chatbot for Medicaps University's Lost & Found system.
 
 Key facts about SnapFind:
 - Students report found items on SnapFind, then physically submit them to Room 114, V Block (if found near V Block) or the Guard Room (elsewhere)
@@ -245,13 +248,30 @@ Key facts about SnapFind:
 - Admin at Room 114 reviews all claims and verifies in person
 - If approved, the student collects from Room 114, V Block or the Guard Room
 - Only @medicaps.ac.in email addresses can register
-- Electronics photos are blurred for privacy
+- Electronics photos are blurred for privacy — only the real owner can verify
 
-Answer helpfully and concisely. Only answer questions related to lost & found. If unrelated, politely redirect.
+Answer helpfully and concisely in 2-3 sentences max. Only answer questions related to lost & found. If unrelated, politely redirect."""
 
-Student: {message}"""
-        return _gemini(prompt)
-    except Exception:
+        resp = requests.post(
+            GROQ_URL,
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': 'llama3-8b-8192',
+                'messages': [
+                    {'role': 'system', 'content': system},
+                    {'role': 'user',   'content': message}
+                ],
+                'max_tokens': 200,
+                'temperature': 0.7
+            },
+            timeout=(3, 8)
+        )
+        return resp.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        app.logger.error(f'GROQ_CHAT error: {e}')
         return "Sorry, I'm having trouble right now. Please visit Room 114, V Block for help."
 
 
