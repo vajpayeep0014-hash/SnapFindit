@@ -127,33 +127,30 @@ def _gemini(prompt):
     return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
 
 
-def _gemini_vision(prompt_text, image_url):
-    """Gemini vision call — fetch image and send as base64."""
-    img_resp = requests.get(image_url, timeout=(3, 8))
-    img_resp.raise_for_status()
-    b64 = base64.b64encode(img_resp.content).decode('utf-8')
-    mime = img_resp.headers.get('Content-Type', 'image/jpeg').split(';')[0]
-    if not mime.startswith('image/'):
-        mime = 'image/jpeg'
-    payload = {
-        'contents': [{
-            'parts': [
-                {'text': prompt_text},
-                {'inline_data': {'mime_type': mime, 'data': b64}}
-            ]
-        }]
-    }
-    vision_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
-    resp = requests.post(
-        f'{vision_url}?key={GEMINI_API_KEY}',
-        json=payload,
-        timeout=(3, 10)
-    )
-    resp_json = resp.json()
-    if 'candidates' not in resp_json:
-        app.logger.error(f'GEMINI_VISION: bad response → {resp_json}')
-        raise ValueError(f'No candidates in response: {resp_json}')
-    return resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
+def _cloudinary_categorize(image_url):
+    """Use Cloudinary AI categorization to get image labels."""
+    try:
+        # Extract public_id from Cloudinary URL
+        # URL format: https://res.cloudinary.com/cloud/image/upload/v123/public_id.jpg
+        public_id = image_url.split('/upload/')[-1]
+        if '.' in public_id:
+            public_id = public_id.rsplit('.', 1)[0]
+        # Remove version prefix if present (v1234567/)
+        if public_id.startswith('v') and '/' in public_id:
+            public_id = public_id.split('/', 1)[1]
+
+        result = cloudinary.uploader.explicit(
+            public_id,
+            type='upload',
+            categorization='google_tagging',
+            auto_tagging=0.6
+        )
+        tags = result.get('tags', [])
+        app.logger.info(f'CLOUDINARY_TAGS: {tags}')
+        return tags
+    except Exception as e:
+        app.logger.error(f'CLOUDINARY_CATEGORIZE error: {e}')
+        return []
 
 
 def _parse_json(text):
@@ -188,29 +185,49 @@ Reply ONLY with JSON (no markdown):
 
 
 def check_photo_matches_item(item_name, proof_photo_url):
-    """Use Gemini Vision to check if the proof photo looks like the claimed item."""
-    if not GEMINI_API_KEY:
-        app.logger.warning('PHOTO_CHECK: skipped -- GEMINI_API_KEY is empty')
-        return {'flagged': False, 'reason': ''}
+    """Use Cloudinary AI tagging to check if proof photo matches the item name."""
     if not proof_photo_url:
         app.logger.warning('PHOTO_CHECK: skipped -- proof_photo_url is None')
         return {'flagged': False, 'reason': ''}
     try:
-        prompt = f"""You are a fraud detection system for a college lost & found platform.
-Look at this image carefully and answer: does this image show a '{item_name}' or something closely related to it?
+        tags = _cloudinary_categorize(proof_photo_url)
+        if not tags:
+            app.logger.warning('PHOTO_CHECK: no tags returned, skipping')
+            return {'flagged': False, 'reason': ''}
 
-Flag as mismatched if the image is clearly something completely different from a '{item_name}'.
-For example — if someone claims to have lost earbuds but uploads a photo of a watch, flag it.
-Do NOT flag if the image is blurry, partial, or from an unusual angle but still plausible.
-Do NOT flag if the image could reasonably be part of or related to a '{item_name}'.
+        # Check if any tag loosely matches the item name
+        item_words = set(item_name.lower().replace('-', ' ').split())
+        tag_words  = set(' '.join(tags).lower().split())
 
-Reply ONLY with JSON (no markdown):
-{{"flagged": true or false, "reason": "one line reason if flagged, else empty string"}}"""
-        raw = _gemini_vision(prompt, proof_photo_url)
-        app.logger.info(f'PHOTO_CHECK raw response: {raw}')
-        data = _parse_json(raw)
-        app.logger.info(f'PHOTO_CHECK parsed: {data}')
-        return {'flagged': bool(data.get('flagged')), 'reason': data.get('reason', '')}
+        # Build common synonyms for known item types
+        synonyms = {
+            'earbuds': ['earphone', 'earbud', 'headphone', 'airpod', 'audio', 'music', 'wireless'],
+            'phone':   ['mobile', 'smartphone', 'telephone', 'device', 'screen', 'iphone', 'android'],
+            'laptop':  ['computer', 'notebook', 'macbook', 'keyboard', 'screen', 'device'],
+            'wallet':  ['purse', 'cash', 'money', 'leather', 'card'],
+            'watch':   ['clock', 'timepiece', 'wristwatch', 'smartwatch', 'band'],
+            'bag':     ['backpack', 'handbag', 'luggage', 'sack', 'pouch'],
+            'bottle':  ['water', 'flask', 'container', 'drink'],
+            'id':      ['card', 'identity', 'badge', 'student'],
+            'keys':    ['key', 'keychain', 'lock'],
+        }
+
+        # Expand item words with synonyms
+        expanded = set(item_words)
+        for key, syns in synonyms.items():
+            if key in item_words or any(w in item_words for w in syns):
+                expanded.update(syns)
+                expanded.add(key)
+
+        match = bool(expanded & tag_words)
+        app.logger.info(f'PHOTO_CHECK: item_words={item_words}, tags={tags}, match={match}')
+
+        if not match:
+            return {
+                'flagged': True,
+                'reason': f'Photo does not appear to show a {item_name}. Detected: {", ".join(tags[:5])}'
+            }
+        return {'flagged': False, 'reason': ''}
     except Exception as e:
         app.logger.error(f'PHOTO_CHECK exception: {e}')
         return {'flagged': False, 'reason': ''}
