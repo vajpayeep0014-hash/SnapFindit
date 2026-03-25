@@ -71,6 +71,7 @@
         <div class="kpi"><strong>{{ user_count }}</strong><span>Users</span></div>
         <div class="kpi"><strong>{{ pending_count }}</strong><span>Pending Claims</span></div>
         <div class="kpi"><strong>{{ active + claimed }}</strong><span>Total Items</span></div>
+        <div class="kpi" style="border-color:rgba(0,212,255,.25);"><strong style="color:var(--accent);">{{ pending_items_count }}</strong><span>Awaiting Approval</span></div>
         <div class="kpi" style="border-color:rgba(248,113,113,.25);"><strong style="color:var(--danger);">{{ flagged_count }}</strong><span>Flagged</span></div>
     </div>
 </div>
@@ -80,6 +81,10 @@
         <button class="tab-btn active" onclick="switchTab(event,'claims')">
             Claim Requests
             {% if pending_count > 0 %}<span class="pcnt">{{ pending_count }}</span>{% endif %}
+        </button>
+        <button class="tab-btn" onclick="switchTab(event,'pending_items')">
+            Pending Items
+            {% if pending_items_count > 0 %}<span class="pcnt">{{ pending_items_count }}</span>{% endif %}
         </button>
         <button class="tab-btn" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
@@ -154,6 +159,48 @@
             <div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📋</div>
             <h3>No pending claim requests</h3>
             <p>When students claim an item, it will appear here for your review.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Pending Items tab -->
+    <div class="tab-panel" id="tab-pending_items">
+        {% if pending_items %}
+        <div style="background:var(--accent-dim);border:1px solid rgba(0,212,255,.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.83rem;color:var(--accent2);">
+            📦 These items have been posted by finders. Once you physically receive them at Room 114, approve them to show on the listings.
+        </div>
+        <div class="tw"><table>
+            <thead><tr><th>Photo</th><th>Item</th><th>Location</th><th>Block</th><th>Category</th><th>Description</th><th>Reporter</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for item in pending_items %}
+            <tr>
+                <td><img class="thumb" src="{{ item.image_file }}" alt="{{ item.name }}"></td>
+                <td><strong style="font-family:var(--font-head);font-weight:700;">{{ item.name }}</strong></td>
+                <td style="color:var(--muted);">{{ item.location }}</td>
+                <td><span class="cat-pill">{{ item.block or '—' }}</span></td>
+                <td><span class="cat-pill">{{ item.category }}</span></td>
+                <td style="font-size:.78rem;color:var(--muted);max-width:180px;">{{ item.description or '—' }}</td>
+                <td style="font-size:.77rem;color:var(--muted);">{{ item.reporter.email if item.reporter else '—' }}</td>
+                <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ item.created_at.strftime('%d %b %Y') }}</td>
+                <td>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <form class="af" method="POST" action="/admin/item/approve/{{ item.id }}" onsubmit="return confirm('Approve and show on listings?')">
+                            <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
+                        </form>
+                        <form class="af" method="POST" action="/admin/item/reject/{{ item.id }}" onsubmit="return confirm('Reject and delete this item?')">
+                            <button class="abtn abtn-danger" style="width:100%;">✗ Reject</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-state">
+            <div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📦</div>
+            <h3>No items awaiting approval</h3>
+            <p>When finders post items, they'll appear here for your review.</p>
         </div>
         {% endif %}
     </div>

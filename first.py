@@ -32,6 +32,7 @@ print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GE
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 GROQ_API_KEY       = os.environ.get('GROQ_API_KEY', '')
 GROQ_URL           = 'https://api.groq.com/openai/v1/chat/completions'
+print(f'[STARTUP] GROQ_API_KEY loaded: {bool(GROQ_API_KEY)}, length: {len(GROQ_API_KEY)}')
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -67,6 +68,7 @@ class Item(db.Model):
     image_file     = db.Column(db.String(500), nullable=False)
     claimed        = db.Column(db.Boolean, default=False)
     pending        = db.Column(db.Boolean, default=False)
+    approved       = db.Column(db.Boolean, default=False)  # admin must approve before showing publicly
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     reporter_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     claimer_id     = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -269,7 +271,11 @@ Answer helpfully and concisely in 2-3 sentences max. Only answer questions relat
             },
             timeout=(3, 8)
         )
-        return resp.json()['choices'][0]['message']['content'].strip()
+        resp_json = resp.json()
+        if 'choices' not in resp_json:
+            app.logger.error(f'GROQ_CHAT bad response: {resp_json}')
+            raise ValueError(f'No choices in response')
+        return resp_json['choices'][0]['message']['content'].strip()
     except Exception as e:
         app.logger.error(f'GROQ_CHAT error: {e}')
         return "Sorry, I'm having trouble right now. Please visit Room 114, V Block for help."
@@ -379,7 +385,7 @@ def logout():
 @login_required
 def index():
     user  = current_user()
-    items = Item.query.filter_by(claimed=False).order_by(Item.id.desc()).all()
+    items = Item.query.filter_by(claimed=False, approved=True).order_by(Item.id.desc()).all()
     return render_template('index.html', items=items, user=user)
 
 
@@ -448,7 +454,7 @@ def upload_item():
     db.session.commit()
 
     pickup = 'Room 114, V Block' if block == 'V Block' else 'the Guard Room'
-    flash(f'Item posted! Please physically submit it to {pickup}.', 'success')
+    flash(f'Item submitted! Please physically hand it in to {pickup}. It will appear on the listings once admin verifies it.', 'success')
     return redirect(url_for('index'))
 
 
@@ -555,27 +561,53 @@ def chat():
 @admin_required
 def admin():
     user           = current_user()
-    all_items      = Item.query.order_by(Item.id.desc()).all()
+    all_items      = Item.query.filter_by(approved=True).order_by(Item.id.desc()).all()
+    pending_items  = Item.query.filter_by(approved=False).order_by(Item.id.desc()).all()
     all_users      = User.query.order_by(User.created_at.desc()).all()
     claim_requests = ClaimRequest.query.filter_by(status='pending').order_by(ClaimRequest.created_at.desc()).all()
     flagged_items  = FlaggedItem.query.filter_by(status='flagged').order_by(FlaggedItem.created_at.desc()).all()
     flagged_claims = FlaggedClaim.query.filter_by(status='flagged').order_by(FlaggedClaim.created_at.desc()).all()
-    active         = Item.query.filter_by(claimed=False).count()
+    active         = Item.query.filter_by(claimed=False, approved=True).count()
     claimed        = Item.query.filter_by(claimed=True).count()
     user_count     = User.query.count()
     pending_count  = ClaimRequest.query.filter_by(status='pending').count()
+    pending_items_count = Item.query.filter_by(approved=False).count()
     flagged_count  = (FlaggedItem.query.filter_by(status='flagged').count() +
                       FlaggedClaim.query.filter_by(status='flagged').count())
     return render_template('admin.html',
-                           items=all_items, users=all_users,
+                           items=all_items,
+                           pending_items=pending_items,
+                           users=all_users,
                            claim_requests=claim_requests,
                            flagged_items=flagged_items,
                            flagged_claims=flagged_claims,
                            active=active, claimed=claimed,
                            user_count=user_count,
                            pending_count=pending_count,
+                           pending_items_count=pending_items_count,
                            flagged_count=flagged_count,
                            user=user)
+
+
+@app.route('/admin/item/approve/<int:item_id>', methods=['POST'])
+@admin_required
+def approve_item(item_id):
+    item = Item.query.get_or_404(item_id)
+    item.approved = True
+    db.session.commit()
+    flash(f'"{item.name}" approved and is now live on the listings.', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/item/reject/<int:item_id>', methods=['POST'])
+@admin_required
+def reject_item(item_id):
+    item = Item.query.get_or_404(item_id)
+    ClaimRequest.query.filter_by(item_id=item_id).delete()
+    db.session.delete(item)
+    db.session.commit()
+    flash('Item rejected and removed.', 'success')
+    return redirect(url_for('admin'))
 
 
 @app.route('/admin/claim/approve/<int:claim_id>', methods=['POST'])
@@ -612,7 +644,8 @@ def approve_flagged_item(fid):
     db.session.add(Item(
         name=fi.name, location=fi.location, block=fi.block,
         category=fi.category, description=fi.description,
-        image_file=fi.image_file or '', reporter_id=fi.reporter_id
+        image_file=fi.image_file or '', reporter_id=fi.reporter_id,
+        approved=True
     ))
     fi.status = 'approved'
     db.session.commit()
