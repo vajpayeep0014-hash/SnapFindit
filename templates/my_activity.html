@@ -3,51 +3,52 @@
 
 {% block content %}
 <style>
-    .act-hero { text-align:center; padding:60px 24px 40px; position:relative; z-index:1; }
-    .act-hero h1 { font-family:var(--font-head); font-size:2.2rem; font-weight:800; margin-bottom:8px; letter-spacing:-.3px; }
-    .act-hero p { color:var(--muted); font-size:.92rem; font-weight:300; }
+    .act-hero { text-align: center; padding: 60px 24px 40px; position: relative; z-index: 1; }
+    .act-hero h1 { font-family: var(--font-head); font-size: 2.1rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -.3px; color: var(--text); }
+    .act-hero p { color: var(--muted); font-size: .92rem; }
 
-    .summary-bar { display:flex; justify-content:center; gap:10px; margin-top:24px; flex-wrap:wrap; }
+    .summary-bar { display: flex; justify-content: center; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
     .sum-card {
-        background:rgba(255,255,255,.03); backdrop-filter:blur(16px);
-        border:1px solid var(--border2); border-radius:var(--radius-lg);
-        padding:16px 28px; text-align:center; min-width:100px;
-        transition:border-color .2s;
+        background: rgba(255,255,255,0.85); border: 1px solid var(--border2);
+        border-radius: var(--radius-lg); padding: 16px 28px; text-align: center;
+        min-width: 100px; transition: border-color .2s, box-shadow .2s; box-shadow: var(--shadow-sm);
     }
-    .sum-card:hover { border-color:rgba(0,212,255,.25); }
-    .sum-card strong { font-family:var(--font-head); font-size:1.9rem; font-weight:800; color:var(--accent); display:block; line-height:1; margin-bottom:5px; text-shadow:0 0 24px var(--accent-glow); }
-    .sum-card span { font-size:.71rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:500; }
+    .sum-card:hover { border-color: rgba(43,57,144,0.28); box-shadow: var(--shadow-md); }
+    .sum-card strong { font-family: var(--font-head); font-size: 1.9rem; font-weight: 800; color: var(--navy); display: block; line-height: 1; margin-bottom: 5px; }
+    .sum-card span { font-size: .71rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
 
-    .tabs-wrap { max-width:820px; margin:0 auto; padding:0 24px 60px; position:relative; z-index:1; }
-    .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:24px; }
-    .tab-btn { padding:12px 24px; background:none; border:none; font-family:var(--font-body); font-size:.86rem; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s; }
-    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
-    .tab-btn:hover:not(.active) { color:var(--text); }
-    .tab-panel { display:none; }
-    .tab-panel.active { display:block; }
+    .tabs-wrap { max-width: 820px; margin: 0 auto; padding: 0 24px 60px; position: relative; z-index: 1; }
+    .tabs { display: flex; border-bottom: 2px solid var(--border2); margin-bottom: 24px; }
+    .tab-btn { padding: 12px 24px; background: none; border: none; font-family: var(--font-body); font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .2s; }
+    .tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
     .item-row {
-        background:rgba(255,255,255,.025); backdrop-filter:blur(16px);
-        border:1px solid var(--border); border-radius:var(--radius-lg);
-        display:flex; margin-bottom:12px; overflow:hidden;
-        transition:border-color .2s, transform .2s;
+        background: rgba(255,255,255,0.85); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); display: flex; margin-bottom: 12px;
+        overflow: hidden; transition: border-color .2s, transform .2s, box-shadow .2s;
+        box-shadow: var(--shadow-sm);
     }
-    .item-row:hover { border-color:rgba(0,212,255,.2); transform:translateX(3px); }
-    .item-row img { width:94px; min-width:94px; height:94px; object-fit:cover; display:block; border-right:1px solid var(--border); }
-    .item-row-body { padding:14px 18px; flex:1; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-    .item-row-info { flex:1; min-width:100px; }
-    .item-row-name { font-family:var(--font-head); font-weight:700; font-size:.95rem; margin-bottom:4px; }
-    .item-row-loc { font-size:.79rem; color:var(--muted); margin-bottom:3px; }
-    .item-row-date { font-size:.73rem; color:var(--faint); }
-    .item-row-status { text-align:right; flex-shrink:0; }
-    .sbadge { display:inline-block; padding:4px 12px; font-size:.7rem; font-weight:600; letter-spacing:.5px; border-radius:40px; text-transform:uppercase; }
-    .sbadge-active { background:var(--surface); border:1px solid var(--border2); color:var(--muted); }
-    .sbadge-claimed { background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.2); color:var(--success); }
-    .contact-reveal { font-size:.77rem; color:var(--success); margin-top:6px; }
+    .item-row:hover { border-color: rgba(43,57,144,0.2); transform: translateX(3px); box-shadow: var(--shadow-md); }
+    .item-row img { width: 94px; min-width: 94px; height: 94px; object-fit: cover; display: block; border-right: 1px solid var(--border); }
+    .item-row-body { padding: 14px 18px; flex: 1; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .item-row-info { flex: 1; min-width: 100px; }
+    .item-row-name { font-family: var(--font-head); font-weight: 700; font-size: .95rem; margin-bottom: 4px; color: var(--text); }
+    .item-row-loc  { font-size: .79rem; color: var(--muted); margin-bottom: 3px; }
+    .item-row-date { font-size: .73rem; color: var(--faint); }
+    .item-row-status { text-align: right; flex-shrink: 0; }
 
-    .empty-tab { text-align:center; padding:60px 24px; color:var(--muted); }
-    .empty-tab h3 { font-family:var(--font-head); font-weight:700; color:var(--text); margin-bottom:6px; }
-    .empty-tab a { color:var(--accent); text-decoration:none; }
+    .sbadge { display: inline-block; padding: 4px 12px; font-size: .7rem; font-weight: 700; letter-spacing: .5px; border-radius: 40px; text-transform: uppercase; }
+    .sbadge-active  { background: rgba(122,101,96,0.08); border: 1px solid rgba(122,101,96,0.18); color: var(--muted); }
+    .sbadge-claimed { background: rgba(45,122,79,0.08); border: 1px solid rgba(45,122,79,0.18); color: var(--success); }
+    .contact-reveal { font-size: .77rem; color: var(--success); margin-top: 6px; }
+
+    .empty-tab { text-align: center; padding: 60px 24px; color: var(--muted); }
+    .empty-tab .empty-icon { font-size: 2.2rem; margin-bottom: 14px; opacity: .2; display: block; }
+    .empty-tab h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .empty-tab a { color: var(--navy); text-decoration: none; font-weight: 600; }
 </style>
 
 <div class="act-hero">
@@ -86,7 +87,11 @@
             </div>
         </div>
         {% endfor %}{% else %}
-        <div class="empty-tab"><div style="font-size:2rem;margin-bottom:14px;opacity:.3;">🎒</div><h3>No claimed items yet</h3><p><a href="{{ url_for('index') }}">Browse listings</a> to find your lost item.</p></div>
+        <div class="empty-tab">
+            <span class="empty-icon">🎒</span>
+            <h3>No claimed items yet</h3>
+            <p><a href="{{ url_for('index') }}">Browse listings</a> to find your lost item.</p>
+        </div>
         {% endif %}
     </div>
 
@@ -107,13 +112,23 @@
             </div>
         </div>
         {% endfor %}{% else %}
-        <div class="empty-tab"><div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📦</div><h3>No items reported yet</h3><p>Found something? <a href="{{ url_for('index') }}">Report it</a> and help someone out.</p></div>
+        <div class="empty-tab">
+            <span class="empty-icon">📦</span>
+            <h3>No items reported yet</h3>
+            <p>Found something? <a href="{{ url_for('index') }}">Report it</a> and help someone out.</p>
+        </div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-function switchTab(e,name){document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');e.target.classList.add('active');}
+function switchTab(e,name){
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    e.target.classList.add('active');
+}
 </script>
 {% endblock %}
