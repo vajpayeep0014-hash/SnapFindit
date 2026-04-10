@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-    .act-hero { text-align: center; padding: 60px 24px 40px; position: relative; z-index: 1; }
+    .act-hero { text-align: center; padding: clamp(32px,6vw,60px) 20px 32px; position: relative; z-index: 1; }
     .act-hero h1 { font-family: var(--font-head); font-size: 2.1rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -.3px; color: var(--text); }
     .act-hero p { color: var(--muted); font-size: .92rem; }
 
@@ -18,7 +18,7 @@
     .sum-card strong { font-family: var(--font-head); font-size: 1.9rem; font-weight: 800; color: var(--navy); display: block; line-height: 1; margin-bottom: 5px; }
     .sum-card span { font-size: .71rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
 
-    .tabs-wrap { max-width: 820px; margin: 0 auto; padding: 0 24px 60px; position: relative; z-index: 1; }
+    .tabs-wrap { max-width: 820px; margin: 0 auto; padding: 0 16px 60px; position: relative; z-index: 1; }
     .tabs { display: flex; border-bottom: 2px solid var(--border2); margin-bottom: 24px; overflow-x: auto; }
     .tab-btn {
         padding: 12px 24px; background: none; border: none;

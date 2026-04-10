@@ -6,7 +6,7 @@
     /* ── Hero ── */
     .hero {
         position: relative; text-align: center;
-        padding: 80px 24px 56px; z-index: 1;
+        padding: clamp(40px,8vw,80px) 20px 48px; z-index: 1;
     }
     .hero::before {
         content: ''; position: absolute; inset: 0;
@@ -33,7 +33,7 @@
 
     .hero h1 {
         font-family: var(--font-head);
-        font-size: clamp(2.5rem, 6.2vw, 4.4rem);
+        font-size: clamp(2rem, 6.2vw, 4.4rem);
         font-weight: 800; line-height: 1.08; letter-spacing: -.5px;
         margin-bottom: 20px; color: var(--text);
         animation: fadeSlideUp .7s ease .1s both;
@@ -107,7 +107,7 @@
     .section-divider-text { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; font-weight: 700; }
 
     /* ── Tools bar ── */
-    .tools { max-width: 780px; margin: 0 auto 24px; padding: 0 20px; position: relative; z-index: 1; }
+    .tools { max-width: 780px; margin: 0 auto 24px; padding: 0 16px; position: relative; z-index: 1; }
     .search-wrap { position: relative; margin-bottom: 12px; }
     .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; font-size: 1.1rem; }
     .tools input[type="text"] {
@@ -150,7 +150,7 @@
         display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr));
         gap: 18px; position: relative; z-index: 1;
     }
-    @media(max-width:500px) { .grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
+    @media(max-width:600px) { .grid { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 60px; } }
     @media(max-width:340px) { .grid { grid-template-columns: 1fr; } }
 
     /* ── Card ── */
