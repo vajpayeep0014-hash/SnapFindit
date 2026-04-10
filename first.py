@@ -14,7 +14,13 @@ from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+db_url = os.environ.get('DATABASE_URL')
+if db_url and db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql://', 1)
+if not db_url:
+    raise ValueError("DATABASE_URL is not set")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -241,18 +247,7 @@ def gemini_chat(message):
     if not GROQ_API_KEY:
         return "The chatbot isn't configured yet. Please contact the admin at Room 114, V Block."
     try:
-        system = """You are SnapFind Assistant, the helpful chatbot for Medicaps University's Lost & Found system.
-
-Key facts about SnapFind:
-- Students report found items on SnapFind, then physically submit them to Room 114, V Block (if found near V Block) or the Guard Room (elsewhere)
-- Students who lost something browse listings and click "This is mine" to submit a claim
-- Claims include: phone number, when/where they lost the item, optional photo proof
-- Admin at Room 114 reviews all claims and verifies in person
-- If approved, the student collects from Room 114, V Block or the Guard Room
-- Only @medicaps.ac.in email addresses can register
-- Electronics photos are blurred for privacy — only the real owner can verify
-
-Answer helpfully and concisely in 2-3 sentences max. Only answer questions related to lost & found. If unrelated, politely redirect."""
+        system = """You are SnapFind Assistant, the helpful chatbot for Medicaps University's Lost & Found system."""
 
         resp = requests.post(
             GROQ_URL,
@@ -744,4 +739,6 @@ with app.app_context():
         db.session.commit()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
