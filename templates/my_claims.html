@@ -69,6 +69,14 @@
     .status-note { font-size: .75rem; color: var(--muted); margin-top: 6px; max-width: 160px; line-height: 1.5; }
     .status-note-success { font-size: .75rem; color: var(--success); margin-top: 6px; }
 
+    /* Deduplication — shows how many earlier requests were collapsed */
+    .dup-badge {
+        display: inline-block; font-size: .62rem; font-weight: 600; padding: 2px 8px;
+        background: rgba(43,57,144,0.07); border: 1px solid rgba(43,57,144,0.15);
+        color: var(--navy); border-radius: 40px; margin-left: 6px;
+        vertical-align: middle; letter-spacing: .3px; cursor: default;
+    }
+
     .empty-tab { text-align: center; padding: 60px 24px; color: var(--muted); }
     .empty-tab .empty-icon { font-size: 2.2rem; margin-bottom: 14px; opacity: .2; display: block; }
     .empty-tab h3 { font-family: var(--font-head); font-weight: 700; color: var(--text); margin-bottom: 6px; }
@@ -92,13 +100,55 @@
         <button class="tab-btn" onclick="switchTab(event,'reported')">Items I Reported</button>
     </div>
 
-    <!-- Claim requests -->
+    <!-- Claim requests — deduplicated by item, best status wins -->
     <div class="tab-panel active" id="tab-requests">
+        {#
+            Deduplication: group all requests by item_id, then for each item
+            pick the single "best" request using priority: approved > pending > rejected.
+            Extra requests for the same item are collapsed into a "+N more" note.
+        #}
         {% if my_requests %}
+
+        {# Build a dict: item_id -> list of requests, sorted best-first #}
+        {% set STATUS_RANK = {'approved': 0, 'pending': 1, 'rejected': 2} %}
+        {% set seen_ids = [] %}
+        {% set deduped = [] %}
+
+        {# Sort all requests so approved come first, then pending, then rejected #}
+        {% set sorted_requests = my_requests | sort(attribute='status') %}
+        {# Re-sort by our custom rank by iterating #}
+        {% set priority_order = ['approved', 'pending', 'rejected'] %}
+
+        {# We iterate in priority order so the first occurrence of each item_id wins #}
+        {% for priority_status in priority_order %}
+            {% for cr in my_requests %}
+                {% if cr.status == priority_status and cr.item.id not in seen_ids %}
+                    {% set _ = deduped.append(cr) %}
+                    {% set _ = seen_ids.append(cr.item.id) %}
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+
+        {# Count how many requests exist per item_id for the "+N more" badge #}
+        {% set item_counts = {} %}
         {% for cr in my_requests %}
+            {% if cr.item.id in item_counts %}
+                {% set _ = item_counts.update({cr.item.id: item_counts[cr.item.id] + 1}) %}
+            {% else %}
+                {% set _ = item_counts.update({cr.item.id: 1}) %}
+            {% endif %}
+        {% endfor %}
+
+        {% for cr in deduped %}
+        {% set extra = item_counts[cr.item.id] - 1 %}
         <div class="claim-card">
             <div class="claim-card-info">
-                <div class="claim-card-name">{{ cr.item.name }}</div>
+                <div class="claim-card-name">
+                    {{ cr.item.name }}
+                    {% if extra > 0 %}
+                    <span class="dup-badge" title="{{ extra }} earlier request(s) for this item were replaced by this one">+{{ extra }} earlier</span>
+                    {% endif %}
+                </div>
                 <div class="claim-card-detail">📍 {{ cr.item.location }}</div>
                 <div class="claim-card-detail" style="margin-top:4px;font-style:italic;">Lost: {{ cr.when_where }}</div>
                 <div class="claim-card-date">Submitted {{ cr.created_at.strftime('%d %b %Y') }}</div>
@@ -112,10 +162,12 @@
                 <div class="status-note-success">Go collect from Room 114, V Block</div>
                 {% else %}
                 <span class="sbadge sbadge-rejected">✗ Rejected</span>
+                <div class="status-note">Your claim was not approved. <a href="{{ url_for('index') }}" style="color:var(--navy);font-weight:600;">Try again</a> with more detail.</div>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
+
         {% else %}
         <div class="empty-tab">
             <span class="empty-icon">📋</span>
@@ -150,10 +202,18 @@
         {% endif %}
     </div>
 
-    <!-- Reported items -->
+    <!-- Reported items — always shown, even when a claim is under review -->
     <div class="tab-panel" id="tab-reported">
         {% if reported_items %}
         {% for item in reported_items %}
+        {#
+            Determine the most important pending claim request for this item
+            so we can display the right status badge and keep the row visible
+            during the whole review lifecycle.
+        #}
+        {% set active_cr = item.claim_requests | selectattr('status','equalto','approved') | list | first
+                        or item.claim_requests | selectattr('status','equalto','pending')  | list | first
+                        or none %}
         <div class="item-row">
             <img src="{{ item.image_file }}" alt="{{ item.name }}">
             <div class="item-row-body">
@@ -161,11 +221,30 @@
                     <div class="item-row-name">{{ item.name }}</div>
                     <div class="item-row-loc">📍 {{ item.location }}</div>
                     <div class="item-row-date">Reported {{ item.created_at.strftime('%d %b %Y') }}</div>
+                    {% if active_cr and not item.claimed %}
+                    <div class="item-row-date" style="color:var(--muted);margin-top:3px;">
+                        {% if active_cr.status == 'pending' %}
+                        🔍 Claim under review — item stays listed until verified
+                        {% elif active_cr.status == 'approved' %}
+                        ✅ Claim approved — awaiting pickup
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="item-row-status">
-                    {% if item.claimed %}<span class="sbadge sbadge-claimed">✓ Returned</span>
-                    {% elif item.pending %}<span class="sbadge sbadge-pending">⏳ Claim Pending</span>
-                    {% else %}<span class="sbadge sbadge-active">Active</span>{% endif %}
+                    {% if item.claimed %}
+                        <span class="sbadge sbadge-claimed">✓ Returned</span>
+                    {% elif active_cr and active_cr.status == 'approved' %}
+                        <span class="sbadge sbadge-approved">✓ Approved</span>
+                    {% elif active_cr and active_cr.status == 'pending' %}
+                        <span class="sbadge sbadge-pending">⏳ Under Review</span>
+                        {% set pending_count = item.claim_requests | selectattr('status','equalto','pending') | list | length %}
+                        {% if pending_count > 1 %}
+                        <div class="status-note" style="margin-top:5px;">{{ pending_count }} requests pending</div>
+                        {% endif %}
+                    {% else %}
+                        <span class="sbadge sbadge-active">Active</span>
+                    {% endif %}
                 </div>
             </div>
         </div>
