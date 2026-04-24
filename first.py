@@ -128,13 +128,18 @@ class FlaggedClaim(db.Model):
 # ─── Gemini helpers ────────────────────────────────────────────────────────────
 
 def _gemini(prompt):
-    """Raw Gemini text-only call."""
+    """Raw Gemini text-only call. Raises on bad response so callers can catch."""
     resp = requests.post(
         f'{GEMINI_URL}?key={GEMINI_API_KEY}',
         json={'contents': [{'parts': [{'text': prompt}]}]},
         timeout=(3, 5)
     )
-    return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+    resp.raise_for_status()
+    data = resp.json()
+    candidates = data.get('candidates')
+    if not candidates:
+        raise ValueError(f'Gemini returned no candidates: {data}')
+    return candidates[0]['content']['parts'][0]['text'].strip()
 
 
 def _cloudinary_categorize(image_url):
@@ -605,27 +610,43 @@ def reject_item(item_id):
 @app.route('/admin/claim/approve/<int:claim_id>', methods=['POST'])
 @admin_required
 def approve_claim(claim_id):
-    claim = ClaimRequest.query.get_or_404(claim_id)
-    item  = claim.item
-    item.claimed = True; item.pending = False
-    item.claimer_id = claim.claimant_id; item.claimed_at = datetime.utcnow()
-    claim.status = 'approved'
-    for c in ClaimRequest.query.filter_by(item_id=item.id, status='pending').all():
-        c.status = 'rejected'
-    db.session.commit()
-    flash(f'Claim approved. "{item.name}" marked as returned to {claim.claimant.name}.', 'success')
+    try:
+        claim = ClaimRequest.query.get_or_404(claim_id)
+        if claim.status != 'pending':
+            flash('This claim has already been processed.', 'warning')
+            return redirect(url_for('admin'))
+        item  = claim.item
+        item.claimed = True; item.pending = False
+        item.claimer_id = claim.claimant_id; item.claimed_at = datetime.utcnow()
+        claim.status = 'approved'
+        for c in ClaimRequest.query.filter_by(item_id=item.id, status='pending').all():
+            c.status = 'rejected'
+        db.session.commit()
+        flash(f'Claim approved. "{item.name}" marked as returned to {claim.claimant.name}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'approve_claim error: {e}')
+        flash('An error occurred while approving the claim. Please try again.', 'danger')
     return redirect(url_for('admin'))
 
 
 @app.route('/admin/claim/reject/<int:claim_id>', methods=['POST'])
 @admin_required
 def reject_claim(claim_id):
-    claim = ClaimRequest.query.get_or_404(claim_id)
-    claim.status = 'rejected'
-    if ClaimRequest.query.filter_by(item_id=claim.item_id, status='pending').count() == 0:
-        claim.item.pending = False
-    db.session.commit()
-    flash('Claim rejected.', 'success')
+    try:
+        claim = ClaimRequest.query.get_or_404(claim_id)
+        if claim.status != 'pending':
+            flash('This claim has already been processed.', 'warning')
+            return redirect(url_for('admin'))
+        claim.status = 'rejected'
+        if ClaimRequest.query.filter_by(item_id=claim.item_id, status='pending').count() == 0:
+            claim.item.pending = False
+        db.session.commit()
+        flash('Claim rejected.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'reject_claim error: {e}')
+        flash('An error occurred while rejecting the claim. Please try again.', 'danger')
     return redirect(url_for('admin'))
 
 
