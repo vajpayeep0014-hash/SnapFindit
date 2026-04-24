@@ -470,8 +470,6 @@ def submit_claim(item_id):
 
     if item.claimed:
         return respond(False, 'This item has already been returned to its owner.')
-    if item.pending:
-        return respond(False, 'A claim is already pending admin review for this item.')
     if ClaimRequest.query.filter_by(item_id=item_id, claimant_id=user.id, status='pending').first():
         return respond(False, 'You have already submitted a claim for this item.')
 
@@ -531,7 +529,6 @@ def submit_claim(item_id):
         item_id=item.id, claimant_id=user.id,
         phone=phone, when_where=when_where, proof_photo=proof_photo_url
     ))
-    item.pending = True
     db.session.commit()
 
     pickup = 'Room 114, V Block' if item.block == 'V Block' else 'the Guard Room'

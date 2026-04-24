@@ -324,34 +324,28 @@
 <!-- ── Grid ── -->
 <div class="grid" id="itemsGrid">
     {% for item in items %}
-    <div class="card item-entry {% if item.pending %}pending-card{% endif %}"
+    <div class="card item-entry"
          data-category="{{ item.category }}"
          data-name="{{ item.name|lower }}"
          data-location="{{ item.location|lower }}"
-         onclick="{% if not item.pending %}openModal('claimModal{{ item.id }}'){% endif %}">
+         onclick="openModal('claimModal{{ item.id }}')")
 
         <div class="card-img-wrap">
             <img src="{{ item.image_file }}" alt="{{ item.name }}" loading="lazy">
             <div class="card-img-overlay"></div>
             <span class="card-cat-badge">{{ item.category }}</span>
-            {% if item.pending %}<span class="pending-badge">⏳ Reviewing</span>{% endif %}
             {% if item.category == 'Electronics' %}<div class="blur-badge">🔒 Verify to reveal</div>{% endif %}
         </div>
         <div class="card-body">
             <h3>{{ item.name }}</h3>
             <div class="loc">📍 {{ item.location }}</div>
             <div class="when">{{ item.created_at.strftime('%d %b %Y') }}</div>
-            {% if item.pending %}
-            <button class="card-pending-btn">⏳ Claim under review</button>
-            {% else %}
             <button class="card-claim-btn" onclick="event.stopPropagation();openModal('claimModal{{ item.id }}')">
                 This is mine →
             </button>
-            {% endif %}
         </div>
     </div>
 
-    {% if not item.pending %}
     <div class="modal-overlay" id="claimModal{{ item.id }}">
         <div class="modal">
             <div class="modal-head">
@@ -390,7 +384,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
     {% endfor %}
 
     {% if not items %}
