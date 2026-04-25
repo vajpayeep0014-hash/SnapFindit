@@ -37,12 +37,12 @@
         .card {
             background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
             border: 1px solid var(--border2); border-radius: var(--radius-lg);
-            padding: 36px; box-shadow: 0 8px 32px rgba(43,57,144,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            padding: clamp(20px, 6vw, 36px); box-shadow: 0 8px 32px rgba(43,57,144,0.08), 0 2px 8px rgba(0,0,0,0.04);
         }
         .card::before {
             content: ''; display: block; height: 3px;
             background: linear-gradient(90deg, #2B3990, #8B1A2E);
-            border-radius: 2px 2px 0 0; margin: -36px -36px 28px;
+            border-radius: 2px 2px 0 0; margin: clamp(-20px, -6vw, -36px) clamp(-20px, -6vw, -36px) 28px;
         }
 
         .otp-icon { font-size: 2.4rem; text-align: center; margin-bottom: 12px; display: block; }
@@ -56,13 +56,15 @@
         .flash.warning { background: rgba(139,26,46,0.07); color: var(--crimson); border: 1px solid rgba(43,57,144,0.13); }
 
         /* OTP input boxes */
-        .otp-row { display: flex; gap: 10px; justify-content: center; margin: 24px 0; }
+        .otp-row { display: flex; gap: clamp(4px, 2vw, 10px); justify-content: center; margin: 24px 0; }
         .otp-box {
-            width: 52px; height: 60px; text-align: center; font-size: 1.6rem;
+            width: clamp(36px, 12vw, 52px); height: clamp(44px, 14vw, 60px);
+            text-align: center; font-size: clamp(1.1rem, 5vw, 1.6rem);
             font-weight: 800; font-family: var(--font-head);
             border: 2px solid var(--border2); border-radius: var(--radius);
             background: #fff; color: var(--navy); caret-color: var(--navy);
             transition: border-color .2s, box-shadow .2s; outline: none;
+            min-width: 0;
         }
         .otp-box:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(43,57,144,0.1); }
 
@@ -116,7 +118,7 @@
         {% endfor %}
         {% endwith %}
 
-        <form method="POST" id="otp-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <form method="POST" id="otp-form">
             <div class="otp-row">
                 <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" id="b0">
                 <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="b1">
@@ -131,7 +133,7 @@
 
         <div class="timer-row">
             Code expires in <span id="timer">5:00</span> &nbsp;·&nbsp;
-            <form class="resend-form" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <form class="resend-form" method="POST">
                 <input type="hidden" name="resend_otp" value="1">
                 <button class="resend-btn" id="resend-btn" disabled>Resend code</button>
             </form>
