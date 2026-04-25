@@ -1,8 +1,11 @@
 import os
 import json
 import base64
+import random
+import string
 import mimetypes
 import requests
+import resend
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -29,6 +32,10 @@ cloudinary.config(
     api_key    = os.environ.get('CLOUDINARY_API_KEY'),
     api_secret = os.environ.get('CLOUDINARY_API_SECRET')
 )
+
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_SENDER  = os.environ.get('RESEND_SENDER', 'onboarding@resend.dev')
+resend.api_key = RESEND_API_KEY
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN     = '@medicaps.ac.in'
@@ -123,6 +130,21 @@ class FlaggedClaim(db.Model):
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
     item        = db.relationship('Item', backref='flagged_claims')
     claimant    = db.relationship('User', backref='flagged_claims')
+
+
+class OTPCode(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    email      = db.Column(db.String(200), nullable=False)
+    code       = db.Column(db.String(6), nullable=False)
+    purpose    = db.Column(db.String(20), nullable=False)  # 'register' or 'reset'
+    used       = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def is_expired(self):
+        from datetime import timezone
+        now = datetime.utcnow()
+        diff = (now - self.created_at).total_seconds()
+        return diff > 300  # 5 minutes
 
 
 # ─── Gemini helpers ────────────────────────────────────────────────────────────
@@ -281,6 +303,54 @@ def gemini_chat(message):
         return "Sorry, I'm having trouble right now. Please visit Room 114, V Block for help."
 
 
+# ─── OTP helper ────────────────────────────────────────────────────────────────
+
+def send_otp(email, purpose):
+    """Generate a 6-digit OTP, store it, and email it via Resend."""
+    # Invalidate any previous unused OTPs for this email+purpose
+    OTPCode.query.filter_by(email=email, purpose=purpose, used=False).delete()
+    db.session.commit()
+
+    code = ''.join(random.choices(string.digits, k=6))
+    otp  = OTPCode(email=email, code=code, purpose=purpose)
+    db.session.add(otp)
+    db.session.commit()
+
+    subject = 'SnapFind — Your OTP Code'
+    if purpose == 'reset':
+        subject = 'SnapFind — Password Reset OTP'
+
+    html = f"""
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;background:#f8f6f2;border-radius:16px;overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#2B3990,#8B1A2E);padding:24px 32px;">
+        <h2 style="color:#fff;margin:0;font-size:1.3rem;font-weight:800;letter-spacing:-.2px;">SnapFind</h2>
+        <p style="color:rgba(255,255,255,0.75);margin:4px 0 0;font-size:.82rem;">Medicaps University Lost &amp; Found</p>
+      </div>
+      <div style="padding:32px;">
+        <p style="color:#1a1210;font-size:.95rem;margin:0 0 8px;">Your one-time verification code is:</p>
+        <div style="background:#fff;border:2px solid rgba(43,57,144,0.18);border-radius:12px;text-align:center;padding:24px;margin:20px 0;">
+          <span style="font-size:2.6rem;font-weight:800;letter-spacing:10px;color:#2B3990;">{code}</span>
+        </div>
+        <p style="color:#7a6560;font-size:.82rem;margin:0;">This code expires in <strong>5 minutes</strong>. Do not share it with anyone.</p>
+      </div>
+      <div style="background:#f1ece4;padding:14px 32px;font-size:.75rem;color:#c4b0a8;text-align:center;">
+        If you didn't request this, you can safely ignore this email.
+      </div>
+    </div>
+    """
+    try:
+        resend.Emails.send({
+            'from':    RESEND_SENDER,
+            'to':      [email],
+            'subject': subject,
+            'html':    html,
+        })
+        return True
+    except Exception as e:
+        app.logger.error(f'OTP send error: {e}')
+        return False
+
+
 # ─── Auth helpers ───────────────────────────────────────────────────────────────
 
 def login_required(f):
@@ -358,18 +428,140 @@ def register():
         if User.query.filter_by(email=email).first():
             flash('An account with this email already exists.', 'danger')
             return render_template('register.html')
+        # Store form data in session and send OTP
+        session['pending_register'] = {
+            'email': email, 'name': name,
+            'phone': phone, 'password': generate_password_hash(password)
+        }
+        ok = send_otp(email, 'register')
+        if not ok:
+            flash('Failed to send OTP. Please try again.', 'danger')
+            return render_template('register.html')
+        flash('OTP sent to your college email. Enter it below.', 'success')
+        return redirect(url_for('verify_register_otp'))
+    return render_template('register.html')
+
+
+@app.route('/verify-register', methods=['GET', 'POST'])
+def verify_register_otp():
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    pending = session.get('pending_register')
+    if not pending:
+        flash('Session expired. Please register again.', 'warning')
+        return redirect(url_for('register'))
+    if request.method == 'POST':
+        entered = request.form.get('otp', '').strip()
+        resend_req = request.form.get('resend_otp')
+        if resend_req:
+            ok = send_otp(pending['email'], 'register')
+            if ok:
+                flash('New OTP sent to your email.', 'success')
+            else:
+                flash('Failed to resend OTP. Try again.', 'danger')
+            return render_template('verify_otp.html', email=pending['email'], purpose='register')
+        otp = OTPCode.query.filter_by(
+            email=pending['email'], purpose='register', used=False
+        ).order_by(OTPCode.created_at.desc()).first()
+        if not otp or otp.code != entered:
+            flash('Invalid OTP. Please try again.', 'danger')
+            return render_template('verify_otp.html', email=pending['email'], purpose='register')
+        if otp.is_expired():
+            flash('OTP has expired. Request a new one.', 'danger')
+            return render_template('verify_otp.html', email=pending['email'], purpose='register')
+        otp.used = True
         user = User(
-            email    = email,
-            name     = name,
-            phone    = phone,
-            password = generate_password_hash(password),
-            is_admin = email in ADMIN_EMAILS
+            email    = pending['email'],
+            name     = pending['name'],
+            phone    = pending['phone'],
+            password = pending['password'],
+            is_admin = pending['email'] in ADMIN_EMAILS
         )
         db.session.add(user)
         db.session.commit()
-        flash('Account created! You can now log in.', 'success')
+        session.pop('pending_register', None)
+        flash('Account verified and created! You can now log in.', 'success')
         return redirect(url_for('login'))
-    return render_template('register.html')
+    return render_template('verify_otp.html', email=pending['email'], purpose='register')
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if not email.endswith(COLLEGE_DOMAIN):
+            flash(f'Only {COLLEGE_DOMAIN} emails are accepted.', 'danger')
+            return render_template('forgot_password.html')
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Don't reveal if account exists — show same message
+            flash('If that email exists, an OTP has been sent.', 'success')
+            return render_template('forgot_password.html')
+        session['reset_email'] = email
+        ok = send_otp(email, 'reset')
+        if not ok:
+            flash('Failed to send OTP. Please try again.', 'danger')
+            return render_template('forgot_password.html')
+        flash('OTP sent to your college email.', 'success')
+        return redirect(url_for('verify_reset_otp'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/verify-reset', methods=['GET', 'POST'])
+def verify_reset_otp():
+    email = session.get('reset_email')
+    if not email:
+        flash('Session expired. Please try again.', 'warning')
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        entered    = request.form.get('otp', '').strip()
+        resend_req = request.form.get('resend_otp')
+        if resend_req:
+            ok = send_otp(email, 'reset')
+            flash('New OTP sent.' if ok else 'Failed to resend. Try again.', 'success' if ok else 'danger')
+            return render_template('verify_otp.html', email=email, purpose='reset')
+        otp = OTPCode.query.filter_by(
+            email=email, purpose='reset', used=False
+        ).order_by(OTPCode.created_at.desc()).first()
+        if not otp or otp.code != entered:
+            flash('Invalid OTP. Please try again.', 'danger')
+            return render_template('verify_otp.html', email=email, purpose='reset')
+        if otp.is_expired():
+            flash('OTP has expired. Request a new one.', 'danger')
+            return render_template('verify_otp.html', email=email, purpose='reset')
+        otp.used = True
+        db.session.commit()
+        session['reset_verified'] = True
+        return redirect(url_for('reset_password'))
+    return render_template('verify_otp.html', email=email, purpose='reset')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    email = session.get('reset_email')
+    if not email or not session.get('reset_verified'):
+        flash('Please complete OTP verification first.', 'warning')
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm', '')
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return render_template('reset_password.html')
+        if password != confirm:
+            flash('Passwords do not match.', 'danger')
+            return render_template('reset_password.html')
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash('Account not found.', 'danger')
+            return redirect(url_for('login'))
+        user.password = generate_password_hash(password)
+        db.session.commit()
+        session.pop('reset_email', None)
+        session.pop('reset_verified', None)
+        flash('Password reset successfully! You can now log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html')
 
 
 @app.route('/logout')
