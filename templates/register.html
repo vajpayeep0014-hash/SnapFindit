@@ -117,7 +117,7 @@
 
         <div class="hint">🎓 Only <strong>@medicaps.ac.in</strong> emails are accepted.</div>
 
-        <form method="POST">
+        <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="fg">
                 <label>Full Name</label>
                 <input type="text" name="name" placeholder="Username" required>

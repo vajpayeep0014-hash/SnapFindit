@@ -142,10 +142,10 @@
                 <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ cr.created_at.strftime('%d %b %Y') }}</td>
                 <td>
                     <div style="display:flex;flex-direction:column;gap:6px;">
-                        <form class="af" method="POST" action="/admin/claim/approve/{{ cr.id }}" onsubmit="return confirm('Approve this claim? Item will be marked as returned.')">
+                        <form class="af" method="POST" action="/admin/claim/approve/{{ cr.id }}" onsubmit="return confirm('Approve this claim? Item will be marked as returned.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
                         </form>
-                        <form class="af" method="POST" action="/admin/claim/reject/{{ cr.id }}" onsubmit="return confirm('Reject this claim?')">
+                        <form class="af" method="POST" action="/admin/claim/reject/{{ cr.id }}" onsubmit="return confirm('Reject this claim?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="abtn abtn-danger" style="width:100%;">✗ Reject</button>
                         </form>
                     </div>
@@ -184,10 +184,10 @@
                 <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ item.created_at.strftime('%d %b %Y') }}</td>
                 <td>
                     <div style="display:flex;flex-direction:column;gap:6px;">
-                        <form class="af" method="POST" action="/admin/item/approve/{{ item.id }}" onsubmit="return confirm('Approve and show on listings?')">
+                        <form class="af" method="POST" action="/admin/item/approve/{{ item.id }}" onsubmit="return confirm('Approve and show on listings?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
                         </form>
-                        <form class="af" method="POST" action="/admin/item/reject/{{ item.id }}" onsubmit="return confirm('Reject and delete this item?')">
+                        <form class="af" method="POST" action="/admin/item/reject/{{ item.id }}" onsubmit="return confirm('Reject and delete this item?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="abtn abtn-danger" style="width:100%;">✗ Reject</button>
                         </form>
                     </div>
@@ -227,9 +227,9 @@
                 </td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                     {% if item.claimed %}
-                    <form class="af" method="POST" action="/admin/unclaim/{{ item.id }}" onsubmit="return confirm('Mark as unclaimed?')"><button class="abtn">↩ Unclaim</button></form>
+                    <form class="af" method="POST" action="/admin/unclaim/{{ item.id }}" onsubmit="return confirm('Mark as unclaimed?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="abtn">↩ Unclaim</button></form>
                     {% endif %}
-                    <form class="af" method="POST" action="/admin/delete/{{ item.id }}" onsubmit="return confirm('Delete permanently?')"><button class="abtn abtn-danger">Delete</button></form>
+                    <form class="af" method="POST" action="/admin/delete/{{ item.id }}" onsubmit="return confirm('Delete permanently?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="abtn abtn-danger">Delete</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -254,7 +254,7 @@
                 <td style="text-align:center;font-weight:600;">{{ u.claims|length }}</td>
                 <td>
                     {% if u.email != user.email %}
-                    <form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')">
+                    <form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="abtn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button>
                     </form>
                     {% else %}<span style="font-size:.75rem;color:var(--faint);">You</span>{% endif %}
@@ -289,10 +289,10 @@
                     <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ fi.created_at.strftime('%d %b %Y') }}</td>
                     <td>
                         <div style="display:flex;flex-direction:column;gap:6px;">
-                            <form class="af" method="POST" action="/admin/flagged-item/approve/{{ fi.id }}" onsubmit="return confirm('Approve and move to live listings?')">
+                            <form class="af" method="POST" action="/admin/flagged-item/approve/{{ fi.id }}" onsubmit="return confirm('Approve and move to live listings?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
                             </form>
-                            <form class="af" method="POST" action="/admin/flagged-item/delete/{{ fi.id }}" onsubmit="return confirm('Delete permanently?')">
+                            <form class="af" method="POST" action="/admin/flagged-item/delete/{{ fi.id }}" onsubmit="return confirm('Delete permanently?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="abtn abtn-danger" style="width:100%;">✗ Delete</button>
                             </form>
                         </div>
@@ -331,10 +331,10 @@
                     <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ fc.created_at.strftime('%d %b %Y') }}</td>
                     <td>
                         <div style="display:flex;flex-direction:column;gap:6px;">
-                            <form class="af" method="POST" action="/admin/flagged-claim/approve/{{ fc.id }}" onsubmit="return confirm('Approve and move to pending claims?')">
+                            <form class="af" method="POST" action="/admin/flagged-claim/approve/{{ fc.id }}" onsubmit="return confirm('Approve and move to pending claims?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="abtn abtn-success" style="width:100%;">✓ Approve</button>
                             </form>
-                            <form class="af" method="POST" action="/admin/flagged-claim/delete/{{ fc.id }}" onsubmit="return confirm('Delete permanently?')">
+                            <form class="af" method="POST" action="/admin/flagged-claim/delete/{{ fc.id }}" onsubmit="return confirm('Delete permanently?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="abtn abtn-danger" style="width:100%;">✗ Delete</button>
                             </form>
                         </div>

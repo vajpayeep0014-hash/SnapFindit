@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}SnapFind{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -580,7 +581,7 @@ async function sendChat() {
     const input = document.getElementById('chat-input'), msg = input.value.trim(); if (!msg) return;
     input.value = ''; addMsg(msg, 'user'); showTyping();
     try {
-        const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) });
+        const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ message: msg }) });
         const data = await res.json(); hideTyping(); addMsg(data.reply || 'Sorry, something went wrong.', 'bot');
     } catch (e) { hideTyping(); addMsg('Network error. Please try again.', 'bot'); }
 }

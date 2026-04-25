@@ -8,6 +8,9 @@ import requests
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -18,7 +21,15 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key')
+secret = os.environ.get('SECRET_KEY')
+if not secret:
+    raise ValueError("SECRET_KEY environment variable is not set")
+app.secret_key = secret
+
+# ── Session cookie security ───────────────────────────────────────────────────
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE']   = not app.debug   # True in prod (HTTPS), False in local dev (HTTP)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
@@ -38,7 +49,35 @@ cloudinary.config(
 GMAIL_USER         = os.environ.get('GMAIL_USER', '')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 
+ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
+
+def allowed_file(file):
+    """Check both extension AND magic bytes (first 12 bytes of actual content)."""
+    filename = file.filename if hasattr(file, 'filename') else file
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+    # Read magic bytes to verify actual file type
+    if hasattr(file, 'read'):
+        header = file.read(12)
+        file.seek(0)
+        detected = None
+        if header[:3] == b'\xff\xd8\xff':
+            detected = 'image/jpeg'
+        elif header[:8] == b'\x89PNG\r\n\x1a\n':
+            detected = 'image/png'
+        elif header[:6] in (b'GIF87a', b'GIF89a'):
+            detected = 'image/gif'
+        elif header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+            detected = 'image/webp'
+        # HEIC/HEIF don't have simple magic — allow by extension only
+        if detected is None and ext not in {'heic', 'heif'}:
+            return False
+    return True
+
 COLLEGE_DOMAIN     = '@medicaps.ac.in'
 ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
@@ -55,7 +94,26 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'max_overflow':  2
 }
 
-db = SQLAlchemy(app)
+db   = SQLAlchemy(app)
+csrf = CSRFProtect(app)
+limiter = Limiter(key_func=get_remote_address,
+                  default_limits=["300 per day", "60 per hour"])
+limiter.init_app(app)
+
+# ── Security headers on every response ───────────────────────────────────────
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options']        = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "img-src 'self' res.cloudinary.com data: blob:; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' fonts.googleapis.com fonts.gstatic.com; "
+        "font-src fonts.gstatic.com; "
+        "connect-src 'self'"
+    )
+    return response
 
 
 # ─── Models ────────────────────────────────────────────────────────────────────
@@ -69,7 +127,7 @@ class User(db.Model):
     phone        = db.Column(db.String(20), nullable=True)
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     items_posted = db.relationship('Item', backref='reporter', lazy=True, foreign_keys='Item.reporter_id')
-    claims       = db.relationship('Item', backref='claimer', lazy=True, foreign_keys='Item.claimer_id')
+    claims       = db.relationship('Item', backref='claimed_by', lazy=True, foreign_keys='Item.claimer_id')
 
 
 class Item(db.Model):
@@ -142,7 +200,6 @@ class OTPCode(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def is_expired(self):
-        from datetime import timezone
         now = datetime.utcnow()
         diff = (now - self.created_at).total_seconds()
         return diff > 300  # 5 minutes
@@ -307,7 +364,7 @@ def gemini_chat(message):
 # ─── OTP helper ────────────────────────────────────────────────────────────────
 
 def send_otp(email, purpose):
-    """Generate a 6-digit OTP, store it, and email it via Resend."""
+    """Generate a 6-digit OTP, store it, and email it via Gmail SMTP."""
     # Invalidate any previous unused OTPs for this email+purpose
     OTPCode.query.filter_by(email=email, purpose=purpose, used=False).delete()
     db.session.commit()
@@ -345,7 +402,6 @@ def send_otp(email, purpose):
         msg['From']    = f'SnapFind <{GMAIL_USER}>'
         msg['To']      = email
         msg.attach(MIMEText(html, 'html'))
-
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             smtp.sendmail(GMAIL_USER, email, msg.as_string())
@@ -384,13 +440,10 @@ def current_user():
         return User.query.get(session['user_id'])
     return None
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
 # ─── Auth routes ───────────────────────────────────────────────────────────────
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     if 'user_id' in session:
         return redirect(url_for('index'))
@@ -411,6 +464,7 @@ def login():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def register():
     if 'user_id' in session:
         return redirect(url_for('index'))
@@ -490,6 +544,7 @@ def verify_register_otp():
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -603,6 +658,7 @@ def my_claims():
 
 @app.route('/upload', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def upload_item():
     name        = request.form.get('name', '').strip()
     location    = request.form.get('location', '').strip()
@@ -618,7 +674,7 @@ def upload_item():
     if not file or not file.filename:
         flash('Please upload a photo.', 'danger')
         return redirect(url_for('index'))
-    if not allowed_file(file.filename):
+    if not allowed_file(file):
         flash('Invalid file type.', 'danger')
         return redirect(url_for('index'))
 
@@ -684,7 +740,7 @@ def submit_claim(item_id):
     proof_tags      = []
     proof_file = request.files.get('proof_photo')
     app.logger.info(f'CLAIM_PHOTO: file={proof_file}, filename={proof_file.filename if proof_file else None}')
-    if proof_file and proof_file.filename and allowed_file(proof_file.filename):
+    if proof_file and proof_file.filename and allowed_file(proof_file):
         try:
             r = cloudinary.uploader.upload(
                 proof_file,
@@ -740,6 +796,7 @@ def submit_claim(item_id):
 
 @app.route('/api/chat', methods=['POST'])
 @login_required
+@limiter.limit("20 per minute")
 def chat():
     data    = request.get_json()
     message = (data or {}).get('message', '').strip()
@@ -924,7 +981,16 @@ def admin_unclaim(item_id):
 @app.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])
 @admin_required
 def toggle_admin(user_id):
+    current = current_user()
     user = User.query.get_or_404(user_id)
+    # Prevent demoting yourself
+    if user.id == current.id:
+        flash('You cannot change your own admin status.', 'danger')
+        return redirect(url_for('admin'))
+    # Prevent removing the last admin
+    if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
+        flash('Cannot remove the last admin account.', 'danger')
+        return redirect(url_for('admin'))
     user.is_admin = not user.is_admin
     db.session.commit()
     flash(f"{'Granted' if user.is_admin else 'Removed'} admin for {user.email}", 'success')
@@ -947,7 +1013,7 @@ with app.app_context():
         db.session.add(User(
             email    = 'admin@medicaps.ac.in',
             name     = 'Campus Admin',
-            password = generate_password_hash('admin123'),
+            password = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123')),
             is_admin = True
         ))
         db.session.commit()
