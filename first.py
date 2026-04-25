@@ -355,7 +355,7 @@ def gemini_chat(message):
                 'Content-Type': 'application/json'
             },
             json={
-                'model': 'llama3-8b-8192',
+                'model': 'llama-3.1-8b-instant',
                 'messages': [
                     {'role': 'system', 'content': system},
                     {'role': 'user',   'content': message}
@@ -363,7 +363,7 @@ def gemini_chat(message):
                 'max_tokens': 200,
                 'temperature': 0.7
             },
-            timeout=(3, 8)
+            timeout=(5, 15)
         )
         resp_json = resp.json()
         if 'choices' not in resp_json:
