@@ -52,6 +52,20 @@ GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 
+CATEGORIES = [
+    'Electronics',
+    'ID & Cards',
+    'Books & Notes',
+    'Bags',
+    'Stationery',
+    'Clothing',
+    'Keys',
+    'Glasses & Accessories',
+    'Bottles & Tiffin',
+    'Sports Equipment',
+    'Documents',
+    'Other',
+]
 def allowed_file(file):
     """Check both extension AND magic bytes (first 12 bytes of actual content)."""
     filename = file.filename if hasattr(file, 'filename') else file
@@ -636,8 +650,13 @@ def logout():
 @login_required
 def index():
     user  = current_user()
-    items = Item.query.filter_by(claimed=False, approved=True).order_by(Item.id.desc()).all()
-    return render_template('index.html', items=items, user=user)
+    cat_filter = request.args.get('category', 'all')
+    query = Item.query.filter_by(claimed=False, approved=True)
+    if cat_filter != 'all' and cat_filter in CATEGORIES:
+        query = query.filter_by(category=cat_filter)
+    items = query.order_by(Item.id.desc()).all()
+    return render_template('index.html', items=items, user=user,
+                           categories=CATEGORIES, active_category=cat_filter)
 
 
 @app.route('/my-claims')
@@ -663,7 +682,9 @@ def upload_item():
     name        = request.form.get('name', '').strip()
     location    = request.form.get('location', '').strip()
     block       = request.form.get('block', 'Other')
-    category    = request.form.get('category', 'Generic')
+    category    = request.form.get('category', 'Other')
+    if category not in CATEGORIES:
+        category = 'Other'
     description = request.form.get('description', '').strip()
 
     if not name or not location:

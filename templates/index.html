@@ -311,9 +311,24 @@
     </div>
     <div class="toolbar-row">
         <div class="filters">
-            <button class="active" data-filter="all">All</button>
-            <button data-filter="Electronics">Electronics</button>
-            <button data-filter="Generic">Other</button>
+            {% set cat_icons = {
+                'Electronics':          '📱',
+                'ID & Cards':           '🪪',
+                'Books & Notes':        '📚',
+                'Bags':                 '🎒',
+                'Stationery':           '✏️',
+                'Clothing':             '👕',
+                'Keys':                 '🔑',
+                'Glasses & Accessories':'👓',
+                'Bottles & Tiffin':     '🍱',
+                'Sports Equipment':     '⚽',
+                'Documents':            '📄',
+                'Other':                '📦'
+            } %}
+            <button class="{{ 'active' if active_category == 'all' }}" data-filter="all">All</button>
+            {% for cat in categories %}
+            <button class="{{ 'active' if active_category == cat }}" data-filter="{{ cat }}">{{ cat_icons.get(cat, '') }} {{ cat }}</button>
+            {% endfor %}
         </div>
         <button class="report-btn" onclick="openModal('uploadModal')">
             <span>+</span> Report Found
@@ -433,8 +448,9 @@
                 <div class="form-group">
                     <label>Category</label>
                     <select name="category">
-                        <option value="Generic">Standard Item</option>
-                        <option value="Electronics">Electronics (Phone, Laptop…)</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
