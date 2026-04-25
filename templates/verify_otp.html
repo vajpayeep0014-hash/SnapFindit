@@ -118,7 +118,7 @@
         {% endfor %}
         {% endwith %}
 
-        <form method="POST" id="otp-form">
+        <form method="POST" id="otp-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="otp-row">
                 <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" id="b0">
                 <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" id="b1">
@@ -133,7 +133,7 @@
 
         <div class="timer-row">
             Code expires in <span id="timer">5:00</span> &nbsp;·&nbsp;
-            <form class="resend-form" method="POST">
+            <form class="resend-form" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="resend_otp" value="1">
                 <button class="resend-btn" id="resend-btn" disabled>Resend code</button>
             </form>
