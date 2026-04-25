@@ -5,7 +5,9 @@ import random
 import string
 import mimetypes
 import requests
-import resend
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -33,9 +35,8 @@ cloudinary.config(
     api_secret = os.environ.get('CLOUDINARY_API_SECRET')
 )
 
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-RESEND_SENDER  = os.environ.get('RESEND_SENDER', 'onboarding@resend.dev')
-resend.api_key = RESEND_API_KEY
+GMAIL_USER         = os.environ.get('GMAIL_USER', '')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
 COLLEGE_DOMAIN     = '@medicaps.ac.in'
@@ -339,12 +340,15 @@ def send_otp(email, purpose):
     </div>
     """
     try:
-        resend.Emails.send({
-            'from':    RESEND_SENDER,
-            'to':      [email],
-            'subject': subject,
-            'html':    html,
-        })
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = f'SnapFind <{GMAIL_USER}>'
+        msg['To']      = email
+        msg.attach(MIMEText(html, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            smtp.sendmail(GMAIL_USER, email, msg.as_string())
         return True
     except Exception as e:
         app.logger.error(f'OTP send error: {e}')
