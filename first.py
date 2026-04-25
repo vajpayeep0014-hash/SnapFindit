@@ -997,6 +997,40 @@ def toggle_admin(user_id):
     return redirect(url_for('admin'))
 
 
+@app.route('/admin/delete-user/<int:user_id>', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    current = current_user()
+    user = User.query.get_or_404(user_id)
+    # Prevent deleting yourself
+    if user.id == current.id:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('admin'))
+    # Prevent deleting the last admin
+    if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
+        flash('Cannot delete the last admin account.', 'danger')
+        return redirect(url_for('admin'))
+    try:
+        # Delete all claim requests made by this user
+        ClaimRequest.query.filter_by(claimant_id=user.id).delete()
+        # Orphan items they reported (keep items, just remove reporter link)
+        Item.query.filter_by(reporter_id=user.id).update({'reporter_id': None})
+        # Orphan items they claimed (keep items, just remove claimer link)
+        Item.query.filter_by(claimer_id=user.id).update({'claimer_id': None, 'claimed': False, 'claimed_at': None})
+        # Delete flagged items and claims linked to this user
+        FlaggedItem.query.filter_by(reporter_id=user.id).delete()
+        FlaggedClaim.query.filter_by(claimant_id=user.id).delete()
+        name = user.name
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'User "{name}" has been permanently deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'delete_user error: {e}')
+        flash('An error occurred while deleting the user. Please try again.', 'danger')
+    return redirect(url_for('admin'))
+
+
 @app.route('/api/stats')
 def stats():
     return jsonify({

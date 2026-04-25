@@ -252,10 +252,13 @@
                 <td style="font-size:.77rem;color:var(--muted);">{{ u.created_at.strftime('%d %b %Y') }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.items_posted|length }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.claims|length }}</td>
-                <td>
+                <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                     {% if u.email != user.email %}
                     <form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="abtn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button>
+                    </form>
+                    <form class="af" method="POST" action="/admin/delete-user/{{ u.id }}" onsubmit="return confirm('Permanently delete {{ u.name }}? This cannot be undone.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="abtn abtn-danger">Delete</button>
                     </form>
                     {% else %}<span style="font-size:.75rem;color:var(--faint);">You</span>{% endif %}
                 </td>
