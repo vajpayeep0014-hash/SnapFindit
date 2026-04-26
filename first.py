@@ -1210,6 +1210,20 @@ def stats():
 with app.app_context():
     db.create_all()
 
+    # ── Migrate: add new columns if they don't exist yet ─────────────────────
+    from sqlalchemy import text
+    with db.engine.connect() as conn:
+        for col, typedef in [
+            ('is_central_admin', 'BOOLEAN DEFAULT FALSE'),
+            ('block_assignment',  'VARCHAR(50)'),
+        ]:
+            try:
+                conn.execute(text(f'ALTER TABLE "user" ADD COLUMN {col} {typedef}'))
+                conn.commit()
+                print(f'[MIGRATE] Added column: {col}')
+            except Exception:
+                conn.rollback()   # column already exists — safe to ignore
+
     # ── Central admin (god mode) — always upsert so password/flags stay correct ─
     central = User.query.filter_by(email=CENTRAL_ADMIN_EMAIL).first()
     if central:
