@@ -92,8 +92,33 @@ def allowed_file(file):
             return False
     return True
 
-COLLEGE_DOMAIN     = '@medicaps.ac.in'
-ADMIN_EMAILS       = {'admin@medicaps.ac.in', 'security@medicaps.ac.in'}
+COLLEGE_DOMAIN = '@medicaps.ac.in'
+
+# ── Campus blocks ─────────────────────────────────────────────────────────────
+BLOCKS = ['V Block', 'Q Block', 'M Block', 'N Block', 'Main Canteen', 'Central Library', 'Other']
+
+BLOCK_PICKUP = {
+    'V Block':         'Room 114, V Block',
+    'Q Block':         'Admin Room, Q Block',
+    'M Block':         'Admin Room, M Block',
+    'N Block':         'Admin Room, N Block',
+    'Main Canteen':    'Main Canteen Office',
+    'Central Library': 'Library Front Desk',
+    'Other':           'Guard Room / Security Desk',
+}
+
+# Block admin seed accounts: email → (plain_password, block_assignment, display_name)
+BLOCK_ADMIN_SEEDS = {
+    'vblock@medicaps.ac.in':   ('VBlock@2025#Mca!',   'V Block',         'V Block Admin'),
+    'qblock@medicaps.ac.in':   ('QBlock@2025#Mca!',   'Q Block',         'Q Block Admin'),
+    'mblock@medicaps.ac.in':   ('MBlock@2025#Mca!',   'M Block',         'M Block Admin'),
+    'nblock@medicaps.ac.in':   ('NBlock@2025#Mca!',   'N Block',         'N Block Admin'),
+    'canteen@medicaps.ac.in':  ('Canteen@2025#Mca!',  'Main Canteen',    'Canteen Admin'),
+    'library@medicaps.ac.in':  ('Library@2025#Mca!',  'Central Library', 'Library Admin'),
+}
+
+CENTRAL_ADMIN_EMAIL    = 'admin@medicaps.ac.in'
+CENTRAL_ADMIN_PASSWORD = 'Central@2025#Mca!'
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
@@ -133,15 +158,17 @@ def set_security_headers(response):
 # ─── Models ────────────────────────────────────────────────────────────────────
 
 class User(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    email        = db.Column(db.String(200), unique=True, nullable=False)
-    name         = db.Column(db.String(120), nullable=False)
-    password     = db.Column(db.String(300), nullable=False)
-    is_admin     = db.Column(db.Boolean, default=False)
-    phone        = db.Column(db.String(20), nullable=True)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    items_posted = db.relationship('Item', backref='reporter', lazy=True, foreign_keys='Item.reporter_id')
-    claims       = db.relationship('Item', backref='claimed_by', lazy=True, foreign_keys='Item.claimer_id')
+    id               = db.Column(db.Integer, primary_key=True)
+    email            = db.Column(db.String(200), unique=True, nullable=False)
+    name             = db.Column(db.String(120), nullable=False)
+    password         = db.Column(db.String(300), nullable=False)
+    is_admin         = db.Column(db.Boolean, default=False)
+    is_central_admin = db.Column(db.Boolean, default=False)   # god-mode
+    block_assignment = db.Column(db.String(50), nullable=True)  # e.g. 'V Block'
+    phone            = db.Column(db.String(20), nullable=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    items_posted     = db.relationship('Item', backref='reporter', lazy=True, foreign_keys='Item.reporter_id')
+    claims           = db.relationship('Item', backref='claimed_by', lazy=True, foreign_keys='Item.claimer_id')
 
 
 class Item(db.Model):
@@ -443,6 +470,7 @@ def login_required(f):
     return decorated
 
 def admin_required(f):
+    """Allows both block admins and central admin."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
@@ -454,6 +482,26 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated
+
+def central_admin_required(f):
+    """Only the central (god-mode) admin."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in.', 'warning')
+            return redirect(url_for('login'))
+        user = User.query.get(session['user_id'])
+        if not user or not user.is_central_admin:
+            flash('Central admin access required.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated
+
+def _check_block_access(user, item_block):
+    """Return True if this admin can act on an item from item_block."""
+    if user.is_central_admin:
+        return True
+    return user.block_assignment == item_block
 
 def current_user():
     if 'user_id' in session:
@@ -487,7 +535,6 @@ def login():
                 if parsed.netloc == '' and next_url.startswith('/') and not next_url.startswith('//'):
                     return redirect(next_url)
             return redirect(url_for('admin') if user.is_admin else url_for('index'))
-        flash('Invalid credentials. Please try again.', 'danger')
     return render_template('login.html')
 
 
@@ -561,7 +608,7 @@ def verify_register_otp():
             name     = pending['name'],
             phone    = pending['phone'],
             password = pending['password'],
-            is_admin = pending['email'] in ADMIN_EMAILS
+            is_admin = False   # regular users never get admin via self-registration
         )
         db.session.add(user)
         db.session.commit()
@@ -662,14 +709,18 @@ def logout():
 
 @app.route('/')
 def index():
-    user  = current_user()
+    user       = current_user()
     cat_filter = request.args.get('category', 'all')
+    blk_filter = request.args.get('block', 'all')
     query = Item.query.filter_by(claimed=False, approved=True)
     if cat_filter != 'all' and cat_filter in CATEGORIES:
         query = query.filter_by(category=cat_filter)
+    if blk_filter != 'all' and blk_filter in BLOCKS:
+        query = query.filter_by(block=blk_filter)
     items = query.order_by(Item.id.desc()).all()
     return render_template('index.html', items=items, user=user,
-                           categories=CATEGORIES, active_category=cat_filter)
+                           categories=CATEGORIES, active_category=cat_filter,
+                           blocks=BLOCKS, active_block=blk_filter)
 
 
 @app.route('/my-claims')
@@ -739,7 +790,7 @@ def upload_item():
     ))
     db.session.commit()
 
-    pickup = 'Room 114, V Block' if block == 'V Block' else 'the Guard Room'
+    pickup = BLOCK_PICKUP.get(block, BLOCK_PICKUP['Other'])
     flash(f'Item submitted! Please physically hand it in to {pickup}. It will appear on the listings once admin verifies it.', 'success')
     return redirect(url_for('index'))
 
@@ -822,7 +873,7 @@ def submit_claim(item_id):
     ))
     db.session.commit()
 
-    pickup = 'Room 114, V Block' if item.block == 'V Block' else 'the Guard Room'
+    pickup = BLOCK_PICKUP.get(item.block, BLOCK_PICKUP['Other'])
     return respond(True, f'Claim submitted! If approved, collect your item from {pickup}.')
 
 
@@ -844,20 +895,43 @@ def chat():
 @app.route('/admin')
 @admin_required
 def admin():
-    user           = current_user()
-    all_items      = Item.query.filter_by(approved=True).order_by(Item.id.desc()).all()
-    pending_items  = Item.query.filter_by(approved=False).order_by(Item.id.desc()).all()
-    all_users      = User.query.order_by(User.created_at.desc()).all()
-    claim_requests = ClaimRequest.query.filter_by(status='pending').order_by(ClaimRequest.created_at.desc()).all()
-    flagged_items  = FlaggedItem.query.filter_by(status='flagged').order_by(FlaggedItem.created_at.desc()).all()
-    flagged_claims = FlaggedClaim.query.filter_by(status='flagged').order_by(FlaggedClaim.created_at.desc()).all()
-    active         = Item.query.filter_by(claimed=False, approved=True).count()
-    claimed        = Item.query.filter_by(claimed=True).count()
-    user_count     = User.query.count()
-    pending_count  = ClaimRequest.query.filter_by(status='pending').count()
-    pending_items_count = Item.query.filter_by(approved=False).count()
-    flagged_count  = (FlaggedItem.query.filter_by(status='flagged').count() +
-                      FlaggedClaim.query.filter_by(status='flagged').count())
+    user = current_user()
+
+    if user.is_central_admin:
+        # God mode — everything
+        all_items      = Item.query.filter_by(approved=True).order_by(Item.id.desc()).all()
+        pending_items  = Item.query.filter_by(approved=False).order_by(Item.id.desc()).all()
+        all_users      = User.query.order_by(User.created_at.desc()).all()
+        claim_requests = ClaimRequest.query.filter_by(status='pending').order_by(ClaimRequest.created_at.desc()).all()
+        flagged_items  = FlaggedItem.query.filter_by(status='flagged').order_by(FlaggedItem.created_at.desc()).all()
+        flagged_claims = FlaggedClaim.query.filter_by(status='flagged').order_by(FlaggedClaim.created_at.desc()).all()
+        active         = Item.query.filter_by(claimed=False, approved=True).count()
+        claimed        = Item.query.filter_by(claimed=True).count()
+        user_count     = User.query.count()
+    else:
+        # Block admin — scoped to their block only
+        blk = user.block_assignment
+        all_items      = Item.query.filter_by(approved=True, block=blk).order_by(Item.id.desc()).all()
+        pending_items  = Item.query.filter_by(approved=False, block=blk).order_by(Item.id.desc()).all()
+        all_users      = []   # block admins don't see users
+        # Only claim requests for items in their block
+        claim_requests = (ClaimRequest.query
+                          .join(Item, ClaimRequest.item_id == Item.id)
+                          .filter(ClaimRequest.status == 'pending', Item.block == blk)
+                          .order_by(ClaimRequest.created_at.desc()).all())
+        flagged_items  = FlaggedItem.query.filter_by(status='flagged', block=blk).order_by(FlaggedItem.created_at.desc()).all()
+        flagged_claims = (FlaggedClaim.query
+                          .join(Item, FlaggedClaim.item_id == Item.id)
+                          .filter(FlaggedClaim.status == 'flagged', Item.block == blk)
+                          .order_by(FlaggedClaim.created_at.desc()).all())
+        active         = Item.query.filter_by(claimed=False, approved=True, block=blk).count()
+        claimed        = Item.query.filter_by(claimed=True, block=blk).count()
+        user_count     = None
+
+    pending_count       = len(claim_requests)
+    pending_items_count = len(pending_items)
+    flagged_count       = len(flagged_items) + len(flagged_claims)
+
     return render_template('admin.html',
                            items=all_items,
                            pending_items=pending_items,
@@ -870,13 +944,19 @@ def admin():
                            pending_count=pending_count,
                            pending_items_count=pending_items_count,
                            flagged_count=flagged_count,
+                           blocks=BLOCKS,
+                           block_pickup=BLOCK_PICKUP,
                            user=user)
 
 
 @app.route('/admin/item/approve/<int:item_id>', methods=['POST'])
 @admin_required
 def approve_item(item_id):
+    user = current_user()
     item = Item.query.get_or_404(item_id)
+    if not _check_block_access(user, item.block):
+        flash('You can only manage items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
     item.approved = True
     db.session.commit()
     flash(f'"{item.name}" approved and is now live on the listings.', 'success')
@@ -886,7 +966,11 @@ def approve_item(item_id):
 @app.route('/admin/item/reject/<int:item_id>', methods=['POST'])
 @admin_required
 def reject_item(item_id):
+    user = current_user()
     item = Item.query.get_or_404(item_id)
+    if not _check_block_access(user, item.block):
+        flash('You can only manage items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
     ClaimRequest.query.filter_by(item_id=item_id).delete()
     db.session.delete(item)
     db.session.commit()
@@ -897,8 +981,12 @@ def reject_item(item_id):
 @app.route('/admin/claim/approve/<int:claim_id>', methods=['POST'])
 @admin_required
 def approve_claim(claim_id):
+    user = current_user()
     try:
         claim = ClaimRequest.query.get_or_404(claim_id)
+        if not _check_block_access(user, claim.item.block):
+            flash('You can only manage claims for your assigned block.', 'danger')
+            return redirect(url_for('admin'))
         if claim.status != 'pending':
             flash('This claim has already been processed.', 'warning')
             return redirect(url_for('admin'))
@@ -920,8 +1008,12 @@ def approve_claim(claim_id):
 @app.route('/admin/claim/reject/<int:claim_id>', methods=['POST'])
 @admin_required
 def reject_claim(claim_id):
+    user = current_user()
     try:
         claim = ClaimRequest.query.get_or_404(claim_id)
+        if not _check_block_access(user, claim.item.block):
+            flash('You can only manage claims for your assigned block.', 'danger')
+            return redirect(url_for('admin'))
         if claim.status != 'pending':
             flash('This claim has already been processed.', 'warning')
             return redirect(url_for('admin'))
@@ -940,7 +1032,11 @@ def reject_claim(claim_id):
 @app.route('/admin/flagged-item/approve/<int:fid>', methods=['POST'])
 @admin_required
 def approve_flagged_item(fid):
+    user = current_user()
     fi = FlaggedItem.query.get_or_404(fid)
+    if not _check_block_access(user, fi.block):
+        flash('You can only manage flagged items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
     db.session.add(Item(
         name=fi.name, location=fi.location, block=fi.block,
         category=fi.category, description=fi.description,
@@ -956,7 +1052,12 @@ def approve_flagged_item(fid):
 @app.route('/admin/flagged-item/delete/<int:fid>', methods=['POST'])
 @admin_required
 def delete_flagged_item(fid):
-    FlaggedItem.query.get_or_404(fid).status = 'deleted'
+    user = current_user()
+    fi = FlaggedItem.query.get_or_404(fid)
+    if not _check_block_access(user, fi.block):
+        flash('You can only manage flagged items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
+    fi.status = 'deleted'
     db.session.commit()
     flash('Flagged item deleted.', 'success')
     return redirect(url_for('admin'))
@@ -965,10 +1066,14 @@ def delete_flagged_item(fid):
 @app.route('/admin/flagged-claim/approve/<int:fid>', methods=['POST'])
 @admin_required
 def approve_flagged_claim(fid):
+    user = current_user()
     fc   = FlaggedClaim.query.get_or_404(fid)
     item = Item.query.get(fc.item_id)
     if not item:
         flash('Item no longer exists.', 'danger')
+        return redirect(url_for('admin'))
+    if not _check_block_access(user, item.block):
+        flash('You can only manage flagged claims for your assigned block.', 'danger')
         return redirect(url_for('admin'))
     db.session.add(ClaimRequest(
         item_id=fc.item_id, claimant_id=fc.claimant_id,
@@ -984,7 +1089,13 @@ def approve_flagged_claim(fid):
 @app.route('/admin/flagged-claim/delete/<int:fid>', methods=['POST'])
 @admin_required
 def delete_flagged_claim(fid):
-    FlaggedClaim.query.get_or_404(fid).status = 'deleted'
+    user = current_user()
+    fc   = FlaggedClaim.query.get_or_404(fid)
+    item = Item.query.get(fc.item_id)
+    if item and not _check_block_access(user, item.block):
+        flash('You can only manage flagged claims for your assigned block.', 'danger')
+        return redirect(url_for('admin'))
+    fc.status = 'deleted'
     db.session.commit()
     flash('Flagged claim deleted.', 'success')
     return redirect(url_for('admin'))
@@ -993,7 +1104,11 @@ def delete_flagged_claim(fid):
 @app.route('/admin/delete/<int:item_id>', methods=['POST'])
 @admin_required
 def admin_delete(item_id):
+    user = current_user()
     item = Item.query.get_or_404(item_id)
+    if not _check_block_access(user, item.block):
+        flash('You can only delete items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
     ClaimRequest.query.filter_by(item_id=item_id).delete()
     db.session.delete(item)
     db.session.commit()
@@ -1004,7 +1119,11 @@ def admin_delete(item_id):
 @app.route('/admin/unclaim/<int:item_id>', methods=['POST'])
 @admin_required
 def admin_unclaim(item_id):
+    user = current_user()
     item = Item.query.get_or_404(item_id)
+    if not _check_block_access(user, item.block):
+        flash('You can only unclaim items in your assigned block.', 'danger')
+        return redirect(url_for('admin'))
     item.claimed = False; item.pending = False
     item.claimer_id = None; item.claimed_at = None
     db.session.commit()
@@ -1013,15 +1132,13 @@ def admin_unclaim(item_id):
 
 
 @app.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])
-@admin_required
+@central_admin_required
 def toggle_admin(user_id):
     current = current_user()
     user = User.query.get_or_404(user_id)
-    # Prevent demoting yourself
     if user.id == current.id:
         flash('You cannot change your own admin status.', 'danger')
         return redirect(url_for('admin'))
-    # Prevent removing the last admin
     if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
         flash('Cannot remove the last admin account.', 'danger')
         return redirect(url_for('admin'))
@@ -1031,8 +1148,23 @@ def toggle_admin(user_id):
     return redirect(url_for('admin'))
 
 
+@app.route('/admin/assign-block/<int:user_id>', methods=['POST'])
+@central_admin_required
+def assign_block(user_id):
+    user  = User.query.get_or_404(user_id)
+    block = request.form.get('block', '').strip()
+    if block and block not in BLOCKS:
+        flash('Invalid block.', 'danger')
+        return redirect(url_for('admin'))
+    user.block_assignment = block if block else None
+    user.is_admin         = bool(block)
+    db.session.commit()
+    flash(f"Block assignment updated for {user.email}: {block or 'None (demoted)'}", 'success')
+    return redirect(url_for('admin'))
+
+
 @app.route('/admin/delete-user/<int:user_id>', methods=['POST'])
-@admin_required
+@central_admin_required
 def delete_user(user_id):
     current = current_user()
     user = User.query.get_or_404(user_id)
@@ -1077,14 +1209,46 @@ def stats():
 
 with app.app_context():
     db.create_all()
-    if not User.query.filter_by(email='admin@medicaps.ac.in').first():
+
+    # ── Central admin (god mode) — always upsert so password/flags stay correct ─
+    central = User.query.filter_by(email=CENTRAL_ADMIN_EMAIL).first()
+    if central:
+        central.password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD)
+        central.is_admin         = True
+        central.is_central_admin = True
+        central.block_assignment = None
+        print(f'[SEED] Updated central admin: {CENTRAL_ADMIN_EMAIL}')
+    else:
         db.session.add(User(
-            email    = 'admin@medicaps.ac.in',
-            name     = 'Campus Admin',
-            password = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123')),
-            is_admin = True
+            email            = CENTRAL_ADMIN_EMAIL,
+            name             = 'Central Admin',
+            password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD),
+            is_admin         = True,
+            is_central_admin = True,
+            block_assignment = None
         ))
-        db.session.commit()
+        print(f'[SEED] Created central admin: {CENTRAL_ADMIN_EMAIL}')
+    db.session.commit()
+
+    # ── Block admins — always upsert so passwords/flags stay correct ─────────
+    for email, (pwd, block, name) in BLOCK_ADMIN_SEEDS.items():
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            existing.password         = generate_password_hash(pwd)
+            existing.is_admin         = True
+            existing.is_central_admin = False
+            existing.block_assignment = block
+        else:
+            db.session.add(User(
+                email            = email,
+                name             = name,
+                password         = generate_password_hash(pwd),
+                is_admin         = True,
+                is_central_admin = False,
+                block_assignment = block
+            ))
+    db.session.commit()
+    print(f'[SEED] Block admins upserted: {list(BLOCK_ADMIN_SEEDS.keys())}')
 
 if __name__ == '__main__':
     import os
