@@ -310,7 +310,7 @@
         <input type="text" id="liveSearch" placeholder="Search by item name or location…" autocomplete="off">
     </div>
     <div class="toolbar-row">
-        <div class="filters">
+        <div class="filters" id="catFilters">
             {% set cat_icons = {
                 'Electronics':          '📱',
                 'ID & Cards':           '🪪',
@@ -325,14 +325,25 @@
                 'Documents':            '📄',
                 'Other':                '📦'
             } %}
-            <button class="{{ 'active' if active_category == 'all' }}" data-filter="all">All</button>
+            <button class="{{ 'active' if active_category == 'all' }}" data-filter="all" data-type="cat">All</button>
             {% for cat in categories %}
-            <button class="{{ 'active' if active_category == cat }}" data-filter="{{ cat }}">{{ cat_icons.get(cat, '') }} {{ cat }}</button>
+            <button class="{{ 'active' if active_category == cat }}" data-filter="{{ cat }}" data-type="cat">{{ cat_icons.get(cat, '') }} {{ cat }}</button>
             {% endfor %}
         </div>
         <button class="report-btn" onclick="{% if user %}openModal('uploadModal'){% else %}window.location='{{ url_for('login', next='/') }}'{% endif %}">
             <span>+</span> Report Found
         </button>
+    </div>
+    <!-- Block filter row -->
+    <div class="filters" id="blkFilters" style="margin-top:8px;">
+        {% set blk_icons = {
+            'V Block': '🏫', 'Q Block': '🏛', 'M Block': '🏢',
+            'N Block': '🏗', 'Main Canteen': '🍽', 'Central Library': '📖', 'Other': '📍'
+        } %}
+        <button class="{{ 'active' if active_block == 'all' }}" data-filter="all" data-type="blk">All Blocks</button>
+        {% for blk in blocks %}
+        <button class="{{ 'active' if active_block == blk }}" data-filter="{{ blk }}" data-type="blk">{{ blk_icons.get(blk,'📍') }} {{ blk }}</button>
+        {% endfor %}
     </div>
 </div>
 
@@ -341,6 +352,7 @@
     {% for item in items %}
     <div class="card item-entry"
          data-category="{{ item.category }}"
+         data-block="{{ item.block or 'Other' }}"
          data-name="{{ item.name|lower }}"
          data-location="{{ item.location|lower }}"
          onclick="{% if user %}openModal('claimModal{{ item.id }}'){% else %}window.location='{{ url_for('login', next='/') }}'{% endif %}">
@@ -441,9 +453,14 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Area</label>
+                    <label>Area / Block</label>
                     <select name="block" id="blockSelect" onchange="updateSubmitBanner()">
-                        <option value="V Block">V Block / Near V Block</option>
+                        <option value="V Block">V Block</option>
+                        <option value="Q Block">Q Block</option>
+                        <option value="M Block">M Block</option>
+                        <option value="N Block">N Block</option>
+                        <option value="Main Canteen">Main Canteen</option>
+                        <option value="Central Library">Central Library</option>
                         <option value="Other">Other Location</option>
                     </select>
                 </div>
@@ -511,11 +528,18 @@
     }
 
     function updateSubmitBanner() {
+        const PICKUP = {
+            'V Block':         'Room 114, V Block',
+            'Q Block':         'Admin Room, Q Block',
+            'M Block':         'Admin Room, M Block',
+            'N Block':         'Admin Room, N Block',
+            'Main Canteen':    'Main Canteen Office',
+            'Central Library': 'Library Front Desk',
+            'Other':           'Guard Room / Security Desk',
+        };
         const val = document.getElementById('blockSelect').value;
         const banner = document.getElementById('submitBanner');
-        banner.innerHTML = val === 'V Block'
-            ? '📍 Please physically submit this item to <strong>Room 114, V Block</strong> after posting.'
-            : '📍 Please physically submit this item to the <strong>Guard Room</strong> after posting.';
+        banner.innerHTML = `📍 Please physically submit this item to <strong>${PICKUP[val] || 'the Guard Room'}</strong> after posting.`;
         banner.classList.add('show');
     }
 
@@ -532,29 +556,42 @@
     }
 
     const searchInput = document.getElementById('liveSearch');
-    const filterBtns = document.querySelectorAll('.filters button');
-    let currentFilter = 'all';
-    searchInput.addEventListener('input', applyFilters);
-    filterBtns.forEach(btn=>{
-        btn.addEventListener('click',()=>{
-            filterBtns.forEach(b=>b.classList.remove('active'));
+    let currentCat = '{{ active_category }}';
+    let currentBlk = '{{ active_block }}';
+
+    document.querySelectorAll('#catFilters button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#catFilters button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
+            currentCat = btn.dataset.filter;
             applyFilters();
         });
     });
 
+    document.querySelectorAll('#blkFilters button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#blkFilters button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentBlk = btn.dataset.filter;
+            applyFilters();
+        });
+    });
+
+    searchInput.addEventListener('input', applyFilters);
+
     function applyFilters() {
         const q = searchInput.value.toLowerCase();
         let visible = 0;
-        document.querySelectorAll('.item-entry').forEach(card=>{
-            const ok=(currentFilter==='all'||card.dataset.category===currentFilter)&&
-                     (!q||card.dataset.name.includes(q)||card.dataset.location.includes(q));
-            card.style.display=ok?'':'none';
-            if(ok) visible++;
+        document.querySelectorAll('.item-entry').forEach(card => {
+            const catOk = currentCat === 'all' || card.dataset.category === currentCat;
+            const blkOk = currentBlk === 'all' || card.dataset.block === currentBlk;
+            const srchOk = !q || card.dataset.name.includes(q) || card.dataset.location.includes(q);
+            const ok = catOk && blkOk && srchOk;
+            card.style.display = ok ? '' : 'none';
+            if (ok) visible++;
         });
         document.getElementById('noResults').style.display =
-            visible===0 && document.querySelectorAll('.item-entry').length>0 ? 'block':'none';
+            visible === 0 && document.querySelectorAll('.item-entry').length > 0 ? 'block' : 'none';
     }
 
     async function handleClaim(e, itemId) {

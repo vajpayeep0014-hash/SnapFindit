@@ -63,12 +63,17 @@
 </style>
 
 <div class="adm-hero">
-    <h1>Admin Panel</h1>
-    <p>Logged in as {{ user.email }} · Room 114, V Block</p>
+    {% if user.is_central_admin %}
+    <h1>⚡ Central Admin <span style="font-size:1rem;font-weight:500;color:var(--accent);font-family:var(--font-body);">God Mode</span></h1>
+    <p>Logged in as {{ user.email }} · Full system access across all blocks</p>
+    {% else %}
+    <h1>{{ user.block_assignment }} Admin Panel</h1>
+    <p>Logged in as {{ user.email }} · Managing {{ user.block_assignment }} only</p>
+    {% endif %}
     <div class="kpi-row">
         <div class="kpi"><strong>{{ active }}</strong><span>Active</span></div>
         <div class="kpi"><strong>{{ claimed }}</strong><span>Returned</span></div>
-        <div class="kpi"><strong>{{ user_count }}</strong><span>Users</span></div>
+        {% if user.is_central_admin %}<div class="kpi"><strong>{{ user_count }}</strong><span>Users</span></div>{% endif %}
         <div class="kpi"><strong>{{ pending_count }}</strong><span>Pending Claims</span></div>
         <div class="kpi"><strong>{{ active + claimed }}</strong><span>Total Items</span></div>
         <div class="kpi" style="border-color:rgba(0,212,255,.25);"><strong style="color:var(--accent);">{{ pending_items_count }}</strong><span>Awaiting Approval</span></div>
@@ -87,11 +92,19 @@
             {% if pending_items_count > 0 %}<span class="pcnt">{{ pending_items_count }}</span>{% endif %}
         </button>
         <button class="tab-btn" onclick="switchTab(event,'items')">All Items ({{ items|length }})</button>
+        {% if user.is_central_admin %}
         <button class="tab-btn" onclick="switchTab(event,'users')">Users ({{ users|length }})</button>
         <button class="tab-btn" onclick="switchTab(event,'flagged')">
             🚩 Flagged
             {% if flagged_count > 0 %}<span class="bcnt">{{ flagged_count }}</span>{% endif %}
         </button>
+        <button class="tab-btn" onclick="switchTab(event,'godmode')" style="color:#fabd00;">⚡ God Mode</button>
+        {% else %}
+        <button class="tab-btn" onclick="switchTab(event,'flagged')">
+            🚩 Flagged
+            {% if flagged_count > 0 %}<span class="bcnt">{{ flagged_count }}</span>{% endif %}
+        </button>
+        {% endif %}
     </div>
 
     <!-- Claims tab — shown first, most important -->
@@ -136,7 +149,7 @@
                 </td>
                 <td>
                     <span style="font-size:.75rem;color:var(--accent2);font-weight:500;">
-                        {% if cr.item.block == 'V Block' %}Room 114, V Block{% else %}Guard Room{% endif %}
+                        {{ block_pickup.get(cr.item.block, 'Guard Room') }}
                     </span>
                 </td>
                 <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ cr.created_at.strftime('%d %b %Y') }}</td>
@@ -167,7 +180,7 @@
     <div class="tab-panel" id="tab-pending_items">
         {% if pending_items %}
         <div style="background:var(--accent-dim);border:1px solid rgba(0,212,255,.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:.83rem;color:var(--accent2);">
-            📦 These items have been posted by finders. Once you physically receive them at Room 114, approve them to show on the listings.
+            📦 These items have been posted by finders. Once you physically receive them at <strong>{{ block_pickup.get(user.block_assignment, 'your assigned location') if not user.is_central_admin else 'the relevant block location' }}</strong>, approve them to show on the listings.
         </div>
         <div class="tw"><table>
             <thead><tr><th>Photo</th><th>Item</th><th>Location</th><th>Block</th><th>Category</th><th>Description</th><th>Reporter</th><th>Date</th><th>Actions</th></tr></thead>
@@ -237,37 +250,51 @@
         </table></div>
     </div>
 
-    <!-- Users tab -->
+    <!-- Users tab — central admin only -->
+    {% if user.is_central_admin %}
     <div class="tab-panel" id="tab-users">
         <input class="search-bar" type="text" placeholder="Search users…" oninput="filterTable(this,'usersTable')">
         <div class="tw"><table id="usersTable">
-            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th><th>Reported</th><th>Claimed</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Block</th><th>Joined</th><th>Reported</th><th>Claimed</th><th>Actions</th></tr></thead>
             <tbody>
             {% for u in users %}
             <tr class="trow" data-search="{{ u.name|lower }} {{ u.email|lower }}">
                 <td><strong style="font-family:var(--font-head);font-weight:700;">{{ u.name }}</strong></td>
                 <td style="font-size:.79rem;color:var(--muted);">{{ u.email }}</td>
                 <td style="font-size:.79rem;color:var(--muted);">{{ u.phone or '—' }}</td>
-                <td>{% if u.is_admin %}<span class="b-admin">Admin</span>{% else %}<span style="font-size:.77rem;color:var(--muted);">Student</span>{% endif %}</td>
+                <td>
+                    {% if u.is_central_admin %}<span class="b-admin" style="color:#fabd00;">⚡ Central</span>
+                    {% elif u.is_admin %}<span class="b-admin">Block Admin</span>
+                    {% else %}<span style="font-size:.77rem;color:var(--muted);">Student</span>{% endif %}
+                </td>
+                <td><span class="cat-pill">{{ u.block_assignment or '—' }}</span></td>
                 <td style="font-size:.77rem;color:var(--muted);">{{ u.created_at.strftime('%d %b %Y') }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.items_posted|length }}</td>
                 <td style="text-align:center;font-weight:600;">{{ u.claims|length }}</td>
                 <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                    {% if u.email != user.email %}
-                    <form class="af" method="POST" action="/admin/toggle-admin/{{ u.id }}" onsubmit="return confirm('Toggle admin for {{ u.name }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button class="abtn">{{ 'Remove Admin' if u.is_admin else 'Make Admin' }}</button>
+                    {% if u.email != user.email and not u.is_central_admin %}
+                    <!-- Assign block -->
+                    <form class="af" method="POST" action="/admin/assign-block/{{ u.id }}" style="display:flex;gap:4px;align-items:center;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="block" style="font-size:.72rem;padding:4px 6px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);">
+                            <option value="">No Block</option>
+                            {% for blk in blocks %}
+                            <option value="{{ blk }}" {{ 'selected' if u.block_assignment == blk }}>{{ blk }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="abtn" style="padding:4px 8px;">Set</button>
                     </form>
-                    <form class="af" method="POST" action="/admin/delete-user/{{ u.id }}" onsubmit="return confirm('Permanently delete {{ u.name }}? This cannot be undone.')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <form class="af" method="POST" action="/admin/delete-user/{{ u.id }}" onsubmit="return confirm('Permanently delete {{ u.name }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="abtn abtn-danger">Delete</button>
                     </form>
-                    {% else %}<span style="font-size:.75rem;color:var(--faint);">You</span>{% endif %}
+                    {% else %}<span style="font-size:.75rem;color:var(--faint);">{{ 'You' if u.email == user.email else 'Protected' }}</span>{% endif %}
                 </td>
             </tr>
             {% endfor %}
             </tbody>
         </table></div>
     </div>
-</div>
+    {% endif %}
 
     <!-- Flagged tab -->
     <div class="tab-panel" id="tab-flagged">
@@ -351,6 +378,64 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- God Mode tab — central admin only -->
+    {% if user.is_central_admin %}
+    <div class="tab-panel" id="tab-godmode">
+        <div style="background:rgba(250,189,0,.06);border:1px solid rgba(250,189,0,.2);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;font-size:.84rem;color:#fabd00;display:flex;align-items:center;gap:8px;">
+            ⚡ <strong>God Mode</strong> — Full system visibility. You can assign block admins from the Users tab.
+        </div>
+
+        <!-- Per-block stats -->
+        <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:14px;">📊 Block-by-Block Overview</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:32px;">
+            {% for blk in blocks %}
+            {% set blk_active  = items | selectattr('block','equalto',blk) | selectattr('claimed','equalto',false) | list | length %}
+            {% set blk_claimed = items | selectattr('block','equalto',blk) | selectattr('claimed','equalto',true)  | list | length %}
+            {% set blk_pending = claim_requests | selectattr('item.block','equalto',blk) | list | length %}
+            <div style="background:var(--card-bg);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:16px 18px;">
+                <div style="font-family:var(--font-head);font-weight:700;font-size:.88rem;color:var(--text);margin-bottom:10px;">{{ blk }}</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <div><span style="font-size:1.3rem;font-weight:800;color:var(--accent);font-family:var(--font-head);">{{ blk_active }}</span><br><span style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Active</span></div>
+                    <div><span style="font-size:1.3rem;font-weight:800;color:var(--success);font-family:var(--font-head);">{{ blk_claimed }}</span><br><span style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Returned</span></div>
+                    <div><span style="font-size:1.3rem;font-weight:800;color:#fabd00;font-family:var(--font-head);">{{ blk_pending }}</span><br><span style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Claims</span></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- All pending claims across all blocks -->
+        <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:14px;">📋 All Pending Claims (All Blocks)</div>
+        {% set all_pending = claim_requests %}
+        {% if all_pending %}
+        <div class="tw"><table>
+            <thead><tr><th>Block</th><th>Item</th><th>Claimer</th><th>Phone</th><th>When/Where</th><th>Submitted</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for cr in all_pending %}
+            <tr class="claim-row">
+                <td><span class="cat-pill">{{ cr.item.block or '—' }}</span></td>
+                <td><strong style="font-family:var(--font-head);font-weight:700;">{{ cr.item.name }}</strong><br><span style="font-size:.74rem;color:var(--muted);">📍 {{ cr.item.location }}</span></td>
+                <td><div class="claim-detail"><strong>{{ cr.claimant.name }}</strong><br>{{ cr.claimant.email }}</div></td>
+                <td>📞 {{ cr.phone }}</td>
+                <td style="max-width:160px;font-size:.79rem;color:var(--muted);">{{ cr.when_where }}</td>
+                <td style="font-size:.77rem;color:var(--muted);white-space:nowrap;">{{ cr.created_at.strftime('%d %b %Y') }}</td>
+                <td>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <form class="af" method="POST" action="/admin/claim/approve/{{ cr.id }}" onsubmit="return confirm('Approve?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="abtn abtn-success" style="width:100%;">✓ Approve</button></form>
+                        <form class="af" method="POST" action="/admin/claim/reject/{{ cr.id }}" onsubmit="return confirm('Reject?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="abtn abtn-danger" style="width:100%;">✗ Reject</button></form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="empty-state"><div style="font-size:2rem;margin-bottom:14px;opacity:.3;">📋</div><h3>No pending claims across any block</h3></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
 
 {% endblock %}
 
