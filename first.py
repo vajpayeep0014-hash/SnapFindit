@@ -432,7 +432,13 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             flash('Please log in to continue.', 'warning')
-            return redirect(url_for('login'))
+            # Store intended destination securely — only same-origin paths
+            next_url = request.url
+            from urllib.parse import urlparse
+            parsed = urlparse(next_url)
+            # Only allow relative paths, never external redirects
+            safe_next = parsed.path if parsed.netloc == '' or parsed.netloc == request.host else None
+            return redirect(url_for('login', next=safe_next))
         return f(*args, **kwargs)
     return decorated
 
@@ -472,6 +478,14 @@ def login():
             session['user_id']  = user.id
             session['is_admin'] = user.is_admin
             flash(f'Welcome back, {user.name.split()[0]}!', 'success')
+            # Secure next redirect — validate it's a safe internal path
+            next_url = request.args.get('next') or request.form.get('next')
+            if next_url:
+                from urllib.parse import urlparse
+                parsed = urlparse(next_url)
+                # Only allow relative paths, block open redirects
+                if parsed.netloc == '' and next_url.startswith('/') and not next_url.startswith('//'):
+                    return redirect(next_url)
             return redirect(url_for('admin') if user.is_admin else url_for('index'))
         flash('Invalid credentials. Please try again.', 'danger')
     return render_template('login.html')
@@ -641,13 +655,12 @@ def reset_password():
 def logout():
     session.clear()
     flash('You have been logged out.', 'success')
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 
 # ─── Main routes ───────────────────────────────────────────────────────────────
 
 @app.route('/')
-@login_required
 def index():
     user  = current_user()
     cat_filter = request.args.get('category', 'all')
