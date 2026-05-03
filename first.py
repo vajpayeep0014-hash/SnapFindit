@@ -481,7 +481,21 @@ def send_otp(email, purpose):
         msg['From']    = f'SnapFind <{GMAIL_USER}>'
         msg['To']      = email
         msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+
+        # Primary path: Gmail SSL SMTP.
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                smtp.sendmail(GMAIL_USER, email, msg.as_string())
+            return True
+        except Exception as primary_err:
+            app.logger.warning(f'OTP primary SMTP failed, trying TLS fallback: {primary_err}')
+
+        # Fallback path: Gmail STARTTLS SMTP.
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
             smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             smtp.sendmail(GMAIL_USER, email, msg.as_string())
         return True
