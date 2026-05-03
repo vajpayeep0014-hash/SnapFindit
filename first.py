@@ -5,10 +5,6 @@ import random
 import string
 import mimetypes
 import requests
-import smtplib
-import socket
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -55,10 +51,6 @@ cloudinary.config(
     api_key    = os.environ.get('CLOUDINARY_API_KEY'),
     api_secret = os.environ.get('CLOUDINARY_API_SECRET')
 )
-
-GMAIL_USER          = os.environ.get('GMAIL_USER', '')
-GMAIL_APP_PASSWORD  = os.environ.get('GMAIL_APP_PASSWORD', '')
-SMTP_TIMEOUT_SECONDS = int(os.environ.get('SMTP_TIMEOUT_SECONDS', '12'))
 
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
@@ -137,6 +129,7 @@ ALLOWED_HOSTS = {
     for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
     if host.strip()
 }
+MAINTENANCE_MODE   = os.environ.get('MAINTENANCE_MODE', 'false').lower() == 'true'
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
@@ -187,6 +180,24 @@ def enforce_host_allowlist():
     if host not in ALLOWED_HOSTS:
         app.logger.warning(f'Rejected request for unexpected host: {host}')
         return ('Invalid host header', 400)
+
+
+@app.before_request
+def check_maintenance():
+    """Show maintenance page to everyone except logged-in admins.
+    Toggle by setting MAINTENANCE_MODE=true in Render environment variables."""
+    if not MAINTENANCE_MODE:
+        return
+    # Always allow static files and login so admins can still get in
+    allowed_prefixes = ['/static', '/favicon', '/login', '/logout']
+    if any(request.path.startswith(p) for p in allowed_prefixes):
+        return
+    # Let logged-in admins bypass maintenance
+    if session.get('user_id'):
+        user = User.query.get(session['user_id'])
+        if user and user.is_admin:
+            return
+    return render_template('maintenance.html'), 503
 
 
 # ─── Models ────────────────────────────────────────────────────────────────────
@@ -439,10 +450,11 @@ def gemini_chat(message):
 # ─── OTP helper ────────────────────────────────────────────────────────────────
 
 def send_otp(email, purpose):
-    """Generate a 6-digit OTP, store it, and email it via Gmail SMTP."""
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        app.logger.error('OTP send skipped: Gmail credentials are not configured')
-        return False
+    """Generate a 6-digit OTP and store it in the DB.
+    TEMPORARY: Shows OTP on-screen via session instead of emailing it.
+    (Render free tier blocks SMTP ports 465/587 since Sep 26 2025.)
+    Once you upgrade to a paid plan or get a domain, replace this with
+    the Gmail SMTP version and remove the session['dev_otp'] line."""
 
     # Invalidate any previous unused OTPs for this email+purpose
     OTPCode.query.filter_by(email=email, purpose=purpose, used=False).delete()
@@ -453,58 +465,10 @@ def send_otp(email, purpose):
     db.session.add(otp)
     db.session.commit()
 
-    subject = 'SnapFind — Your OTP Code'
-    if purpose == 'reset':
-        subject = 'SnapFind — Password Reset OTP'
-
-    html = f"""
-    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;background:#f8f6f2;border-radius:16px;overflow:hidden;">
-      <div style="background:linear-gradient(90deg,#2B3990,#8B1A2E);padding:24px 32px;">
-        <h2 style="color:#fff;margin:0;font-size:1.3rem;font-weight:800;letter-spacing:-.2px;">SnapFind</h2>
-        <p style="color:rgba(255,255,255,0.75);margin:4px 0 0;font-size:.82rem;">Medicaps University Lost &amp; Found</p>
-      </div>
-      <div style="padding:32px;">
-        <p style="color:#1a1210;font-size:.95rem;margin:0 0 8px;">Your one-time verification code is:</p>
-        <div style="background:#fff;border:2px solid rgba(43,57,144,0.18);border-radius:12px;text-align:center;padding:24px;margin:20px 0;">
-          <span style="font-size:2.6rem;font-weight:800;letter-spacing:10px;color:#2B3990;">{code}</span>
-        </div>
-        <p style="color:#7a6560;font-size:.82rem;margin:0;">This code expires in <strong>5 minutes</strong>. Do not share it with anyone.</p>
-      </div>
-      <div style="background:#f1ece4;padding:14px 32px;font-size:.75rem;color:#c4b0a8;text-align:center;">
-        If you didn't request this, you can safely ignore this email.
-      </div>
-    </div>
-    """
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From']    = f'SnapFind <{GMAIL_USER}>'
-        msg['To']      = email
-        msg.attach(MIMEText(html, 'html'))
-
-        # Primary path: Gmail SSL SMTP.
-        try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
-                smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-                smtp.sendmail(GMAIL_USER, email, msg.as_string())
-            return True
-        except Exception as primary_err:
-            app.logger.warning(f'OTP primary SMTP failed, trying TLS fallback: {primary_err}')
-
-        # Fallback path: Gmail STARTTLS SMTP.
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-            smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            smtp.sendmail(GMAIL_USER, email, msg.as_string())
-        return True
-    except (socket.timeout, TimeoutError) as e:
-        app.logger.error(f'OTP send timeout after {SMTP_TIMEOUT_SECONDS}s: {e}')
-        return False
-    except Exception as e:
-        app.logger.error(f'OTP send error: {e}')
-        return False
+    # Store OTP in session so verify_otp.html can display it on screen
+    session['dev_otp'] = code
+    app.logger.info(f'[DEV] OTP for {email} ({purpose}): {code}')
+    return True
 
 
 # ─── Auth helpers ───────────────────────────────────────────────────────────────

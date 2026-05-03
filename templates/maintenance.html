@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Under Maintenance — SnapFind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Lora:ital,wght@1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8f6f2; --bg2: #f1ece4;
+            --border: rgba(43,57,144,0.12); --border2: rgba(43,57,144,0.2);
+            --text: #1a1210; --muted: #7a6560; --faint: #c4b0a8;
+            --navy: #2B3990; --navy2: #3a4ea8;
+            --navy-dim: rgba(43,57,144,0.07); --navy-glow: rgba(43,57,144,0.14);
+            --crimson: #8B1A2E;
+            --radius: 10px; --radius-lg: 16px;
+            --font-head: 'Plus Jakarta Sans', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-body); background: var(--bg); color: var(--text);
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 24px; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+        }
+
+        canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-blob { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: blobDrift 28s ease-in-out infinite alternate; }
+        .bg-blob-1 { width: 700px; height: 700px; background: radial-gradient(circle, rgba(43,57,144,0.055), transparent 65%); top: -200px; left: -200px; }
+        .bg-blob-2 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(139,26,46,0.05), transparent 65%); bottom: -150px; right: -150px; animation-delay: -12s; }
+        .bg-blob-3 { width: 350px; height: 350px; background: radial-gradient(circle, rgba(43,57,144,0.04), transparent 65%); top: 50%; left: 55%; animation-delay: -6s; }
+        @keyframes blobDrift { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,-18px) scale(1.03); } 100% { transform: translate(-10px,22px) scale(0.97); } }
+
+        /* ── Card ── */
+        .wrap { width: 100%; max-width: 480px; position: relative; z-index: 1; animation: pageIn .6s ease both; }
+        @keyframes pageIn { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card {
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
+            border: 1px solid var(--border2); border-radius: var(--radius-lg);
+            padding: 44px 40px 40px;
+            box-shadow: 0 8px 32px rgba(43,57,144,0.08), 0 2px 8px rgba(0,0,0,0.04);
+            text-align: center;
+        }
+        .card::before {
+            content: ''; display: block; height: 3px;
+            background: linear-gradient(90deg, #2B3990, #8B1A2E);
+            border-radius: 2px 2px 0 0; margin: -44px -40px 36px;
+        }
+
+        /* ── Brand ── */
+        .brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 32px; }
+        .brand-icon {
+            width: 38px; height: 38px; background: var(--navy); border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: #fff; box-shadow: 0 2px 10px var(--navy-glow);
+        }
+        .brand-name { font-family: var(--font-head); font-size: 1.15rem; font-weight: 800; color: var(--text); }
+        .brand-name span { color: var(--navy); }
+
+        /* ── Gear animation ── */
+        .gear-wrap { position: relative; width: 90px; height: 90px; margin: 0 auto 28px; }
+        .gear {
+            position: absolute; border-radius: 50%;
+            border: 5px solid transparent;
+        }
+        .gear-outer {
+            width: 90px; height: 90px; top: 0; left: 0;
+            border-color: var(--navy);
+            border-top-color: transparent;
+            animation: spin 2.4s linear infinite;
+        }
+        .gear-inner {
+            width: 54px; height: 54px; top: 18px; left: 18px;
+            border-color: var(--crimson);
+            border-bottom-color: transparent;
+            animation: spin 1.6s linear infinite reverse;
+        }
+        .gear-dot {
+            position: absolute; width: 16px; height: 16px;
+            background: var(--navy); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Text ── */
+        .title { font-family: var(--font-head); font-size: 1.6rem; font-weight: 800; color: var(--text); margin-bottom: 10px; letter-spacing: -.3px; }
+        .subtitle { color: var(--muted); font-size: .92rem; line-height: 1.6; margin-bottom: 28px; }
+
+        /* ── Info box ── */
+        .info-box {
+            background: var(--navy-dim); border: 1px solid rgba(43,57,144,0.15);
+            border-left: 3px solid var(--navy); border-radius: 0 var(--radius) var(--radius) 0;
+            padding: 12px 16px; font-size: .83rem; color: var(--navy);
+            text-align: left; margin-bottom: 28px; line-height: 1.55;
+        }
+        .info-box strong { font-weight: 700; }
+
+        /* ── Progress bar ── */
+        .progress-wrap { margin-bottom: 28px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-bottom: 8px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
+        .progress-track { height: 6px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+        .progress-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg, var(--navy), var(--crimson));
+            width: 0%; animation: fillBar 2.5s ease forwards;
+        }
+        @keyframes fillBar { to { width: 72%; } }
+
+        /* ── Steps ── */
+        .steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; text-align: left; }
+        .step { display: flex; align-items: center; gap: 12px; font-size: .85rem; color: var(--muted); }
+        .step-dot {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .72rem; font-weight: 700;
+        }
+        .step-done  { background: rgba(45,122,79,0.1);  border: 1.5px solid rgba(45,122,79,0.3);  color: #2d7a4f; }
+        .step-active{ background: rgba(43,57,144,0.1);  border: 1.5px solid rgba(43,57,144,0.3);  color: var(--navy); animation: pulse 1.4s ease infinite; }
+        .step-todo  { background: rgba(43,57,144,0.05); border: 1.5px solid var(--border2); color: var(--faint); }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(43,57,144,0.25); } 50% { box-shadow: 0 0 0 5px rgba(43,57,144,0); } }
+        .step-text strong { color: var(--text); }
+
+        /* ── Footer ── */
+        .footer-note { font-size: .78rem; color: var(--faint); margin-top: 4px; }
+        .footer-note a { color: var(--navy); text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="bg-blob bg-blob-1"></div>
+<div class="bg-blob bg-blob-2"></div>
+<div class="bg-blob bg-blob-3"></div>
+<canvas id="c"></canvas>
+
+<div class="wrap">
+    <div class="card">
+
+        <!-- Brand -->
+        <div class="brand">
+            <div class="brand-icon">🔍</div>
+            <div class="brand-name"><span>Snap</span>Find</div>
+        </div>
+
+        <!-- Animated gear -->
+        <div class="gear-wrap">
+            <div class="gear gear-outer"></div>
+            <div class="gear gear-inner"></div>
+            <div class="gear-dot"></div>
+        </div>
+
+        <div class="title">Under Maintenance</div>
+        <p class="subtitle">
+            We're making some improvements to SnapFind.<br>
+            The system will be back up shortly — thanks for your patience!
+        </p>
+
+        <!-- Info box — edit this message as needed -->
+        <div class="info-box">
+            🛠️ <strong>Scheduled maintenance</strong> — We're upgrading our infrastructure for a smoother experience. Lost item reports and claims are safely stored.
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrap">
+            <div class="progress-label"><span>Progress</span><span>Almost there…</span></div>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+
+        <!-- Steps -->
+        <div class="steps">
+            <div class="step">
+                <div class="step-dot step-done">✓</div>
+                <div class="step-text"><strong>Database backup</strong> — Complete</div>
+            </div>
+            <div class="step">
+                <div class="step-dot step-active">⟳</div>
+                <div class="step-text"><strong>Applying updates</strong> — In progress</div>
+            </div>
+            <div class="step">
+                <div class="step-dot step-todo">3</div>
+                <div class="step-text">Final checks &amp; restart</div>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            Need urgent help? Contact us at
+            <a href="mailto:supportsnapfind@gmail.com">supportsnapfind@gmail.com</a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+    let W, H, mx = innerWidth/2, my = innerHeight/2;
+    const SPACING=36, DOT_R=1.4, COLOR='43,57,144', GOLD='139,26,46', RADIUS=180;
+    let t = 0;
+    function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    const blobs = document.querySelectorAll('.bg-blob');
+    (function loop() {
+        ctx.clearRect(0, 0, W, H); t += 0.004;
+        const rx = mx/W - 0.5, ry = my/H - 0.5;
+        if(blobs[0]) blobs[0].style.transform = `translate(${rx*30}px,${ry*20}px)`;
+        if(blobs[1]) blobs[1].style.transform = `translate(${-rx*20}px,${-ry*15}px)`;
+        if(blobs[2]) blobs[2].style.transform = `translate(${rx*15}px,${-ry*12}px)`;
+        const cols = Math.ceil(W/SPACING)+2, rows = Math.ceil(H/SPACING)+2;
+        for(let i=0;i<cols;i++) for(let j=0;j<rows;j++) {
+            const x = i*SPACING + Math.sin(t+j*0.4)*1.2;
+            const y = j*SPACING + Math.cos(t+i*0.4)*1.2;
+            const dx = x-mx, dy = y-my, dist = Math.sqrt(dx*dx+dy*dy);
+            const prox = Math.max(0, 1-dist/RADIUS);
+            ctx.beginPath(); ctx.arc(x, y, DOT_R+prox*2.5, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(${prox>0.5?GOLD:COLOR},${0.06+prox*0.28})`; ctx.fill();
+        }
+        requestAnimationFrame(loop);
+    })();
+})();
+</script>
+</body>
+</html>
