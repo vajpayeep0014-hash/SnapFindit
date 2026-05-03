@@ -6,6 +6,7 @@ import string
 import mimetypes
 import requests
 import smtplib
+import socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from flask_wtf.csrf import CSRFProtect
@@ -19,17 +20,25 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from functools import wraps
+from datetime import timedelta
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 secret = os.environ.get('SECRET_KEY')
 if not secret:
     raise ValueError("SECRET_KEY environment variable is not set")
+if len(secret) < 32:
+    raise ValueError("SECRET_KEY must be at least 32 characters for production use")
 app.secret_key = secret
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # ── Session cookie security ───────────────────────────────────────────────────
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE']   = not app.debug   # True in prod (HTTPS), False in local dev (HTTP)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False
+app.config['WTF_CSRF_TIME_LIMIT'] = 3600
 db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
@@ -46,8 +55,9 @@ cloudinary.config(
     api_secret = os.environ.get('CLOUDINARY_API_SECRET')
 )
 
-GMAIL_USER         = os.environ.get('GMAIL_USER', '')
-GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
+GMAIL_USER          = os.environ.get('GMAIL_USER', '')
+GMAIL_APP_PASSWORD  = os.environ.get('GMAIL_APP_PASSWORD', '')
+SMTP_TIMEOUT_SECONDS = int(os.environ.get('SMTP_TIMEOUT_SECONDS', '12'))
 
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
@@ -109,16 +119,23 @@ BLOCK_PICKUP = {
 
 # Block admin seed accounts: email → (plain_password, block_assignment, display_name)
 BLOCK_ADMIN_SEEDS = {
-    'vblock@medicaps.ac.in':   ('VBlock@2025#Mca!',   'V Block',         'V Block Admin'),
-    'qblock@medicaps.ac.in':   ('QBlock@2025#Mca!',   'Q Block',         'Q Block Admin'),
-    'mblock@medicaps.ac.in':   ('MBlock@2025#Mca!',   'M Block',         'M Block Admin'),
-    'nblock@medicaps.ac.in':   ('NBlock@2025#Mca!',   'N Block',         'N Block Admin'),
-    'canteen@medicaps.ac.in':  ('Canteen@2025#Mca!',  'Main Canteen',    'Canteen Admin'),
-    'library@medicaps.ac.in':  ('Library@2025#Mca!',  'Central Library', 'Library Admin'),
+    'vblock@medicaps.ac.in':   ('V Block',         'V Block Admin'),
+    'qblock@medicaps.ac.in':   ('Q Block',         'Q Block Admin'),
+    'mblock@medicaps.ac.in':   ('M Block',         'M Block Admin'),
+    'nblock@medicaps.ac.in':   ('N Block',         'N Block Admin'),
+    'canteen@medicaps.ac.in':  ('Main Canteen',    'Canteen Admin'),
+    'library@medicaps.ac.in':  ('Central Library', 'Library Admin'),
 }
 
-CENTRAL_ADMIN_EMAIL    = 'admin@medicaps.ac.in'
-CENTRAL_ADMIN_PASSWORD = 'Central@2025#Mca!'
+CENTRAL_ADMIN_EMAIL    = os.environ.get('CENTRAL_ADMIN_EMAIL', 'admin@medicaps.ac.in').strip().lower()
+CENTRAL_ADMIN_PASSWORD = os.environ.get('CENTRAL_ADMIN_PASSWORD', '')
+ENABLE_ADMIN_BOOTSTRAP = os.environ.get('ENABLE_ADMIN_BOOTSTRAP', 'false').lower() == 'true'
+BLOCK_ADMIN_PASSWORDS_JSON = os.environ.get('BLOCK_ADMIN_PASSWORDS_JSON', '{}')
+ALLOWED_HOSTS = {
+    host.strip().lower()
+    for host in os.environ.get('ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+}
 GEMINI_API_KEY     = os.environ.get('GEMINI_API_KEY', '')
 print(f'[STARTUP] GEMINI_API_KEY loaded: {bool(GEMINI_API_KEY)}, length: {len(GEMINI_API_KEY)}')
 GEMINI_URL         = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
@@ -144,6 +161,10 @@ limiter.init_app(app)
 def set_security_headers(response):
     response.headers['X-Frame-Options']        = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = (
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    )
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "img-src 'self' res.cloudinary.com data: blob:; "
@@ -152,7 +173,19 @@ def set_security_headers(response):
         "font-src fonts.gstatic.com; "
         "connect-src 'self'"
     )
+    if request.is_secure:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
+
+
+@app.before_request
+def enforce_host_allowlist():
+    if not ALLOWED_HOSTS:
+        return
+    host = request.host.split(':')[0].lower()
+    if host not in ALLOWED_HOSTS:
+        app.logger.warning(f'Rejected request for unexpected host: {host}')
+        return ('Invalid host header', 400)
 
 
 # ─── Models ────────────────────────────────────────────────────────────────────
@@ -406,6 +439,10 @@ def gemini_chat(message):
 
 def send_otp(email, purpose):
     """Generate a 6-digit OTP, store it, and email it via Gmail SMTP."""
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        app.logger.error('OTP send skipped: Gmail credentials are not configured')
+        return False
+
     # Invalidate any previous unused OTPs for this email+purpose
     OTPCode.query.filter_by(email=email, purpose=purpose, used=False).delete()
     db.session.commit()
@@ -443,10 +480,13 @@ def send_otp(email, purpose):
         msg['From']    = f'SnapFind <{GMAIL_USER}>'
         msg['To']      = email
         msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
             smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
             smtp.sendmail(GMAIL_USER, email, msg.as_string())
         return True
+    except (socket.timeout, TimeoutError) as e:
+        app.logger.error(f'OTP send timeout after {SMTP_TIMEOUT_SECONDS}s: {e}')
+        return False
     except Exception as e:
         app.logger.error(f'OTP send error: {e}')
         return False
@@ -896,6 +936,8 @@ def chat():
 @admin_required
 def admin():
     user = current_user()
+    block_user_map = {}
+    timeline_items = []  # Full audit trail — central admin only
 
     if user.is_central_admin:
         # God mode — everything
@@ -908,6 +950,13 @@ def admin():
         active         = Item.query.filter_by(claimed=False, approved=True).count()
         claimed        = Item.query.filter_by(claimed=True).count()
         user_count     = User.query.count()
+
+        # Build per-block user visibility for God Mode drilldown.
+        for blk in BLOCKS:
+            block_users = User.query.filter_by(block_assignment=blk).order_by(User.created_at.desc()).all()
+            block_user_map[blk] = block_users
+
+        timeline_items = Item.query.order_by(Item.created_at.desc()).all()
     else:
         # Block admin — scoped to their block only
         blk = user.block_assignment
@@ -944,6 +993,8 @@ def admin():
                            pending_count=pending_count,
                            pending_items_count=pending_items_count,
                            flagged_count=flagged_count,
+                           block_user_map=block_user_map,
+                           timeline_items=timeline_items,
                            blocks=BLOCKS,
                            block_pickup=BLOCK_PICKUP,
                            user=user)
@@ -1224,45 +1275,61 @@ with app.app_context():
             except Exception:
                 conn.rollback()   # column already exists — safe to ignore
 
-    # ── Central admin (god mode) — always upsert so password/flags stay correct ─
-    central = User.query.filter_by(email=CENTRAL_ADMIN_EMAIL).first()
-    if central:
-        central.password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD)
-        central.is_admin         = True
-        central.is_central_admin = True
-        central.block_assignment = None
-        print(f'[SEED] Updated central admin: {CENTRAL_ADMIN_EMAIL}')
-    else:
-        db.session.add(User(
-            email            = CENTRAL_ADMIN_EMAIL,
-            name             = 'Central Admin',
-            password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD),
-            is_admin         = True,
-            is_central_admin = True,
-            block_assignment = None
-        ))
-        print(f'[SEED] Created central admin: {CENTRAL_ADMIN_EMAIL}')
-    db.session.commit()
+    if ENABLE_ADMIN_BOOTSTRAP:
+        if not CENTRAL_ADMIN_PASSWORD:
+            raise ValueError('ENABLE_ADMIN_BOOTSTRAP=true requires CENTRAL_ADMIN_PASSWORD')
 
-    # ── Block admins — always upsert so passwords/flags stay correct ─────────
-    for email, (pwd, block, name) in BLOCK_ADMIN_SEEDS.items():
-        existing = User.query.filter_by(email=email).first()
-        if existing:
-            existing.password         = generate_password_hash(pwd)
-            existing.is_admin         = True
-            existing.is_central_admin = False
-            existing.block_assignment = block
+        # ── Central admin (god mode) bootstrap ───────────────────────────────
+        central = User.query.filter_by(email=CENTRAL_ADMIN_EMAIL).first()
+        if central:
+            central.password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD)
+            central.is_admin         = True
+            central.is_central_admin = True
+            central.block_assignment = None
+            print(f'[SEED] Updated central admin: {CENTRAL_ADMIN_EMAIL}')
         else:
             db.session.add(User(
-                email            = email,
-                name             = name,
-                password         = generate_password_hash(pwd),
+                email            = CENTRAL_ADMIN_EMAIL,
+                name             = 'Central Admin',
+                password         = generate_password_hash(CENTRAL_ADMIN_PASSWORD),
                 is_admin         = True,
-                is_central_admin = False,
-                block_assignment = block
+                is_central_admin = True,
+                block_assignment = None
             ))
-    db.session.commit()
-    print(f'[SEED] Block admins upserted: {list(BLOCK_ADMIN_SEEDS.keys())}')
+            print(f'[SEED] Created central admin: {CENTRAL_ADMIN_EMAIL}')
+        db.session.commit()
+
+        try:
+            block_passwords = json.loads(BLOCK_ADMIN_PASSWORDS_JSON or '{}')
+            if not isinstance(block_passwords, dict):
+                raise ValueError('BLOCK_ADMIN_PASSWORDS_JSON must be a JSON object')
+        except Exception as e:
+            raise ValueError(f'Invalid BLOCK_ADMIN_PASSWORDS_JSON: {e}')
+
+        # ── Block admin bootstrap (only for explicitly provided passwords) ───
+        for email, (block, name) in BLOCK_ADMIN_SEEDS.items():
+            pwd = (block_passwords.get(email) or '').strip()
+            if not pwd:
+                continue
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                existing.password         = generate_password_hash(pwd)
+                existing.is_admin         = True
+                existing.is_central_admin = False
+                existing.block_assignment = block
+            else:
+                db.session.add(User(
+                    email            = email,
+                    name             = name,
+                    password         = generate_password_hash(pwd),
+                    is_admin         = True,
+                    is_central_admin = False,
+                    block_assignment = block
+                ))
+        db.session.commit()
+        print('[SEED] Admin bootstrap complete (env-driven)')
+    else:
+        print('[SEED] Admin bootstrap disabled (set ENABLE_ADMIN_BOOTSTRAP=true to enable)')
 
 if __name__ == '__main__':
     import os
