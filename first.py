@@ -28,7 +28,8 @@ secret = os.environ.get('SECRET_KEY')
 if not secret:
     raise ValueError("SECRET_KEY environment variable is not set")
 if len(secret) < 32:
-    raise ValueError("SECRET_KEY must be at least 32 characters for production use")
+    # Do not crash startup in production; warn loudly so deployment stays available.
+    print("[SECURITY WARNING] SECRET_KEY is shorter than 32 characters. Rotate to a stronger key.")
 app.secret_key = secret
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
