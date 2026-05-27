@@ -95,6 +95,40 @@
 
         .back-link { display: block; text-align: center; margin-top: 16px; font-size: .82rem; color: var(--muted); }
         .back-link a { color: var(--navy); text-decoration: none; font-weight: 600; }
+
+        /* ── Dev OTP banner ── */
+        .dev-otp-banner {
+            background: linear-gradient(135deg, rgba(43,57,144,0.08), rgba(139,26,46,0.06));
+            border: 1.5px dashed rgba(43,57,144,0.35);
+            border-radius: var(--radius); padding: 16px 18px; margin-bottom: 18px;
+            text-align: center;
+        }
+        .dev-otp-label {
+            font-size: .68rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+            color: var(--muted); margin-bottom: 8px; display: flex; align-items: center;
+            justify-content: center; gap: 6px;
+        }
+        .dev-otp-label::before, .dev-otp-label::after {
+            content: ''; flex: 1; height: 1px; background: rgba(43,57,144,0.15);
+        }
+        .dev-otp-code {
+            font-family: var(--font-head); font-size: 2.2rem; font-weight: 800;
+            letter-spacing: 10px; color: var(--navy); display: block;
+            margin: 4px 0 6px; text-indent: 10px; /* compensate letter-spacing on last char */
+        }
+        .dev-otp-note {
+            font-size: .72rem; color: var(--muted); line-height: 1.4;
+        }
+        .copy-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            margin-top: 10px; padding: 6px 16px;
+            background: var(--navy); color: #fff; border: none;
+            border-radius: 40px; font-size: .75rem; font-weight: 700;
+            cursor: pointer; transition: background .2s, transform .15s;
+            font-family: var(--font-body);
+        }
+        .copy-btn:hover { background: var(--navy2); transform: translateY(-1px); }
+        .copy-btn.copied { background: var(--success); }
     </style>
 </head>
 <body>
@@ -117,6 +151,15 @@
         <div class="flash {{ cat }}">{{ msg }}</div>
         {% endfor %}
         {% endwith %}
+
+        {% if session.dev_otp %}
+        <div class="dev-otp-banner">
+            <div class="dev-otp-label">Your one-time code</div>
+            <span class="dev-otp-code" id="otp-display">{{ session.dev_otp }}</span>
+            <div class="dev-otp-note">📧 Email delivery is unavailable — use this code below.<br>It expires in 5 minutes.</div>
+            <button type="button" class="copy-btn" id="copy-otp-btn" onclick="copyOtp()">📋 Copy code</button>
+        </div>
+        {% endif %}
 
         <form method="POST" id="otp-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="otp-row">
@@ -228,6 +271,34 @@ const tick = setInterval(() => {
         requestAnimationFrame(loop);
     })();
 })();
+
+// Copy OTP code to clipboard and auto-fill boxes
+function copyOtp() {
+    const codeEl = document.getElementById('otp-display');
+    const btn = document.getElementById('copy-otp-btn');
+    if (!codeEl) return;
+    const code = codeEl.textContent.trim();
+    navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '📋 Copy code'; btn.classList.remove('copied'); }, 2000);
+    });
+    // Auto-fill the OTP boxes
+    code.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
+    document.getElementById('otp-hidden').value = code;
+}
+
+// Auto-fill OTP boxes if code is shown on screen (convenience)
+window.addEventListener('DOMContentLoaded', () => {
+    const codeEl = document.getElementById('otp-display');
+    if (codeEl) {
+        const code = codeEl.textContent.trim();
+        if (code.length === 6) {
+            code.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
+            document.getElementById('otp-hidden').value = code;
+        }
+    }
+});
 
 // Focus first box on load
 document.getElementById('b0').focus();

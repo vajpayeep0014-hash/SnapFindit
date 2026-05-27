@@ -632,6 +632,7 @@ def verify_register_otp():
         db.session.add(user)
         db.session.commit()
         session.pop('pending_register', None)
+        session.pop('dev_otp', None)
         flash('Account verified and created! You can now log in.', 'success')
         return redirect(url_for('login'))
     return render_template('verify_otp.html', email=pending['email'], purpose='register')
@@ -684,6 +685,7 @@ def verify_reset_otp():
             return render_template('verify_otp.html', email=email, purpose='reset')
         otp.used = True
         db.session.commit()
+        session.pop('dev_otp', None)
         session['reset_verified'] = True
         return redirect(url_for('reset_password'))
     return render_template('verify_otp.html', email=email, purpose='reset')
