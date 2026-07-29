@@ -137,6 +137,15 @@ GROQ_API_KEY       = os.environ.get('GROQ_API_KEY', '')
 GROQ_URL           = 'https://api.groq.com/openai/v1/chat/completions'
 print(f'[STARTUP] GROQ_API_KEY loaded: {bool(GROQ_API_KEY)}, length: {len(GROQ_API_KEY)}')
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_URL     = 'https://api.resend.com/emails'
+# Must be "name@yourverifieddomain.com" or "Name <name@yourverifieddomain.com>".
+# Resend's shared onboarding@resend.dev address only delivers to your own
+# Resend account email — verify a real domain before going live so OTPs
+# can reach @medicaps.ac.in addresses.
+RESEND_SENDER  = os.environ.get('RESEND_SENDER', 'SnapFind <onboarding@resend.dev>')
+print(f'[STARTUP] RESEND_API_KEY loaded: {bool(RESEND_API_KEY)}, length: {len(RESEND_API_KEY)}')
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle':  300,
@@ -450,11 +459,10 @@ def gemini_chat(message):
 # ─── OTP helper ────────────────────────────────────────────────────────────────
 
 def send_otp(email, purpose):
-    """Generate a 6-digit OTP and store it in the DB.
-    TEMPORARY: Shows OTP on-screen via session instead of emailing it.
-    (Render free tier blocks SMTP ports 465/587 since Sep 26 2025.)
-    Once you upgrade to a paid plan or get a domain, replace this with
-    the Gmail SMTP version and remove the session['dev_otp'] line."""
+    """Generate a 6-digit OTP, store it in the DB, and email it via Resend
+    (Render free tier blocks outbound SMTP ports 465/587, so we use Resend's
+    HTTP API instead). Falls back to on-screen display if RESEND_API_KEY
+    isn't set, so local dev still works without an API key."""
 
     # Invalidate any previous unused OTPs for this email+purpose
     OTPCode.query.filter_by(email=email, purpose=purpose, used=False).delete()
@@ -465,9 +473,40 @@ def send_otp(email, purpose):
     db.session.add(otp)
     db.session.commit()
 
-    # Store OTP in session so verify_otp.html can display it on screen
-    session['dev_otp'] = code
-    app.logger.info(f'[DEV] OTP for {email} ({purpose}): {code}')
+    if not RESEND_API_KEY:
+        # No key configured (e.g. local dev) — show OTP on screen instead
+        session['dev_otp'] = code
+        app.logger.info(f'[DEV] OTP for {email} ({purpose}): {code}')
+        return True
+
+    purpose_label = 'account registration' if purpose == 'register' else 'password reset'
+    try:
+        resp = requests.post(
+            RESEND_URL,
+            headers={
+                'Authorization': f'Bearer {RESEND_API_KEY}',
+                'Content-Type':  'application/json',
+            },
+            json={
+                'from':    RESEND_SENDER,
+                'to':      [email],
+                'subject': 'Your SnapFind verification code',
+                'html': (
+                    f'<p>Hi,</p>'
+                    f'<p>Your SnapFind verification code for {purpose_label} is:</p>'
+                    f'<h2 style="letter-spacing:4px">{code}</h2>'
+                    f'<p>This code expires in 5 minutes. '
+                    f"If you didn't request this, you can safely ignore this email.</p>"
+                ),
+            },
+            timeout=(3, 10),
+        )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        app.logger.error(f'[RESEND] failed to send OTP to {email}: {e}')
+        return False
+
+    session.pop('dev_otp', None)
     return True
 
 
