@@ -682,9 +682,6 @@ def verify_register_otp():
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        if not email.endswith(COLLEGE_DOMAIN):
-            flash(f'Only {COLLEGE_DOMAIN} emails are accepted.', 'danger')
-            return render_template('forgot_password.html')
         user = User.query.filter_by(email=email).first()
         if not user:
             # Don't reveal if account exists — show same message
@@ -695,7 +692,7 @@ def forgot_password():
         if not ok:
             flash('Failed to send OTP. Please try again.', 'danger')
             return render_template('forgot_password.html')
-        flash('OTP sent to your college email.', 'success')
+        flash('OTP sent to your email.', 'success')
         return redirect(url_for('verify_reset_otp'))
     return render_template('forgot_password.html')
 
