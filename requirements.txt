@@ -4,6 +4,6 @@ Flask-WTF==1.2.1
 Flask-Limiter==3.5.0
 gunicorn==21.2.0
 blinker==1.7.0
-psycopg2-binary
+psycopg[binary]
 cloudinary
 requests
